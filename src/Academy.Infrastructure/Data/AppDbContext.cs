@@ -43,6 +43,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<StudentGuardian> StudentGuardians => Set<StudentGuardian>();
 
+    public DbSet<Enrollment> Enrollments => Set<Enrollment>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -276,6 +278,30 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
             entity.HasOne<Guardian>()
                 .WithMany()
                 .HasForeignKey(sg => sg.GuardianId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Enrollment>(entity =>
+        {
+            entity.Property(e => e.StartDate)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(e => new { e.AcademyId, e.StudentId, e.GroupId, e.StartDate });
+
+            entity.HasIndex(e => new { e.AcademyId, e.StudentId });
+            entity.HasIndex(e => new { e.AcademyId, e.GroupId });
+
+            entity.HasOne<Student>()
+                .WithMany()
+                .HasForeignKey(e => e.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Group>()
+                .WithMany()
+                .HasForeignKey(e => e.GroupId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

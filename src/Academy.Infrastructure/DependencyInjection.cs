@@ -1,6 +1,7 @@
 using Academy.Application.Abstractions.Academy;
 using Academy.Application.Abstractions.Auth;
 using Academy.Application.Abstractions.Catalog;
+using Academy.Application.Abstractions.Enrollments;
 using Academy.Application.Abstractions.Guardians;
 using Academy.Application.Abstractions.Parents;
 using Academy.Application.Abstractions.Scheduling;
@@ -46,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<IStudentPhotoService, StudentPhotoService>();
         services.AddScoped<IGuardianService, GuardianService>();
         services.AddScoped<IParentPortalService, ParentPortalService>();
+        services.AddScoped<IEnrollmentService, EnrollmentService>();
         services.AddSingleton<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 
         return services;

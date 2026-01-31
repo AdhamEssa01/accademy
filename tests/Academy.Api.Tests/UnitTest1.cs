@@ -783,6 +783,107 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, forbiddenResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task Enrollments_AdminCanEnrollStudent()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, adminUser) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var programId = await CreateProgramAsync(client, "Program E1");
+        var courseId = await CreateCourseAsync(client, programId, "Course E1");
+        var levelId = await CreateLevelAsync(client, courseId, "Level E1", 0);
+        var groupId = await CreateGroupAsync(client, programId, courseId, levelId, "Group E1", adminUser.Id);
+        var studentId = await CreateStudentAsync(client, "Student E1");
+
+        var startDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var response = await client.PostAsJsonAsync("/api/v1/enrollments", new
+        {
+            studentId,
+            groupId,
+            startDate
+        });
+
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(studentId, document.RootElement.GetProperty("studentId").GetGuid());
+        Assert.Equal(groupId, document.RootElement.GetProperty("groupId").GetGuid());
+    }
+
+    [Fact]
+    public async Task Enrollments_EndingEnrollment_Works()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, adminUser) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var programId = await CreateProgramAsync(client, "Program E2");
+        var courseId = await CreateCourseAsync(client, programId, "Course E2");
+        var levelId = await CreateLevelAsync(client, courseId, "Level E2", 0);
+        var groupId = await CreateGroupAsync(client, programId, courseId, levelId, "Group E2", adminUser.Id);
+        var studentId = await CreateStudentAsync(client, "Student E2");
+
+        var startDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var enrollmentId = await CreateEnrollmentAsync(client, studentId, groupId, startDate);
+
+        var endDate = startDate.AddDays(7);
+        var endResponse = await client.PostAsJsonAsync($"/api/v1/enrollments/{enrollmentId}/end", new
+        {
+            endDate
+        });
+
+        endResponse.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await endResponse.Content.ReadAsStringAsync());
+        var endDateText = document.RootElement.GetProperty("endDate").GetString();
+        Assert.Equal(endDate, DateOnly.Parse(endDateText ?? string.Empty));
+    }
+
+    [Fact]
+    public async Task Enrollments_TenantFilter_Hides_OtherAcademy()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var seedResponse = await client.PostAsync("/api/v1/tenant-debug/seed-second-academy", null);
+        if (!seedResponse.IsSuccessStatusCode)
+        {
+            var body = await seedResponse.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(
+                $"Seed endpoint failed: {(int)seedResponse.StatusCode} {seedResponse.ReasonPhrase}. Body: {body}");
+        }
+
+        client.DefaultRequestHeaders.Authorization = null;
+        var otherLogin = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            email = "otheradmin@local.test",
+            password = "Admin123$"
+        });
+        otherLogin.EnsureSuccessStatusCode();
+
+        using var otherLoginDocument = JsonDocument.Parse(await otherLogin.Content.ReadAsStringAsync());
+        var otherToken = otherLoginDocument.RootElement.GetProperty("accessToken").GetString();
+        var otherUserId = otherLoginDocument.RootElement.GetProperty("user").GetProperty("id").GetGuid();
+        Assert.False(string.IsNullOrWhiteSpace(otherToken));
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", otherToken);
+        var programId = await CreateProgramAsync(client, "Program E3");
+        var courseId = await CreateCourseAsync(client, programId, "Course E3");
+        var levelId = await CreateLevelAsync(client, courseId, "Level E3", 0);
+        var groupId = await CreateGroupAsync(client, programId, courseId, levelId, "Group E3", otherUserId);
+        var studentId = await CreateStudentAsync(client, "Student E3");
+
+        var startDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        await CreateEnrollmentAsync(client, studentId, groupId, startDate);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var forbiddenResponse = await client.GetAsync($"/api/v1/students/{studentId}/enrollments");
+
+        Assert.Equal(HttpStatusCode.NotFound, forbiddenResponse.StatusCode);
+    }
+
     private async Task<(string AccessToken, string RefreshToken, UserSnapshot User)> LoginAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
@@ -969,6 +1070,24 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         var response = await client.PostAsJsonAsync("/api/v1/guardians", new
         {
             fullName
+        });
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("id").GetGuid();
+    }
+
+    private static async Task<Guid> CreateEnrollmentAsync(
+        HttpClient client,
+        Guid studentId,
+        Guid groupId,
+        DateOnly startDate)
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/enrollments", new
+        {
+            studentId,
+            groupId,
+            startDate
         });
         response.EnsureSuccessStatusCode();
 
