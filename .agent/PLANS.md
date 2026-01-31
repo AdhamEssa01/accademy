@@ -28,7 +28,7 @@ Tasks 0.1–1.3 are completed:
 - [x] Milestone 3.2 - Guardians + Parent portal read APIs (Admin + Parent)
 - [x] Milestone 3.3 - Enrollments (Student <-> Group history)
 - [x] Milestone 4.1 - Attendance (bulk per session) + permissions
-- [ ] Milestone 4.2 - Attendance queries + basic reporting endpoints
+- [x] Milestone 4.2 - Attendance queries + basic reporting endpoints
 
 ---
 

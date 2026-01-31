@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<IParentPortalService, ParentPortalService>();
         services.AddScoped<IEnrollmentService, EnrollmentService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
+        services.AddScoped<IAttendanceQueryService, AttendanceQueryService>();
         services.AddSingleton<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 
         return services;
