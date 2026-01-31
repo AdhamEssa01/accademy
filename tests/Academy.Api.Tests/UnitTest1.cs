@@ -480,6 +480,91 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Programs_Courses_Levels_AdminCanCreate()
+    {
+        var client = _factory.CreateClient();
+        var (accessToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var programResponse = await client.PostAsJsonAsync("/api/v1/programs", new
+        {
+            name = "Program A",
+            description = "Program description"
+        });
+        programResponse.EnsureSuccessStatusCode();
+
+        using var programDocument = JsonDocument.Parse(await programResponse.Content.ReadAsStringAsync());
+        var programId = programDocument.RootElement.GetProperty("id").GetGuid();
+
+        var courseResponse = await client.PostAsJsonAsync("/api/v1/courses", new
+        {
+            programId,
+            name = "Course A",
+            description = "Course description"
+        });
+        courseResponse.EnsureSuccessStatusCode();
+
+        using var courseDocument = JsonDocument.Parse(await courseResponse.Content.ReadAsStringAsync());
+        var courseId = courseDocument.RootElement.GetProperty("id").GetGuid();
+
+        var levelResponse = await client.PostAsJsonAsync("/api/v1/levels", new
+        {
+            courseId,
+            name = "Level 1",
+            sortOrder = 0
+        });
+        levelResponse.EnsureSuccessStatusCode();
+
+        using var levelDocument = JsonDocument.Parse(await levelResponse.Content.ReadAsStringAsync());
+        Assert.Equal(courseId, levelDocument.RootElement.GetProperty("courseId").GetGuid());
+    }
+
+    [Fact]
+    public async Task Programs_TenantFilter_Hides_OtherAcademy()
+    {
+        var client = _factory.CreateClient();
+
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var seedResponse = await client.PostAsync("/api/v1/tenant-debug/seed-second-academy", null);
+        if (!seedResponse.IsSuccessStatusCode)
+        {
+            var body = await seedResponse.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(
+                $"Seed endpoint failed: {(int)seedResponse.StatusCode} {seedResponse.ReasonPhrase}. Body: {body}");
+        }
+
+        client.DefaultRequestHeaders.Authorization = null;
+        var otherLogin = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            email = "otheradmin@local.test",
+            password = "Admin123$"
+        });
+        otherLogin.EnsureSuccessStatusCode();
+
+        using var otherLoginDocument = JsonDocument.Parse(await otherLogin.Content.ReadAsStringAsync());
+        var otherToken = otherLoginDocument.RootElement.GetProperty("accessToken").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(otherToken));
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", otherToken);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/programs", new
+        {
+            name = "Other Program",
+            description = "Other description"
+        });
+        createResponse.EnsureSuccessStatusCode();
+
+        using var createDocument = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var otherProgramId = createDocument.RootElement.GetProperty("id").GetGuid();
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var forbiddenResponse = await client.GetAsync($"/api/v1/programs/{otherProgramId}");
+
+        Assert.Equal(HttpStatusCode.NotFound, forbiddenResponse.StatusCode);
+    }
+
     private async Task<(string AccessToken, string RefreshToken, UserSnapshot User)> LoginAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new

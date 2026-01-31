@@ -27,6 +27,12 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<Branch> Branches => Set<Branch>();
 
+    public DbSet<Academy.Domain.Program> Programs => Set<Academy.Domain.Program>();
+
+    public DbSet<Course> Courses => Set<Course>();
+
+    public DbSet<Level> Levels => Set<Level>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -97,6 +103,61 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
             entity.HasIndex(b => new { b.AcademyId, b.Name })
                 .IsUnique();
+        });
+
+        builder.Entity<Academy.Domain.Program>(entity =>
+        {
+            entity.Property(p => p.Name)
+                .IsRequired()
+                .HasMaxLength(150);
+
+            entity.Property(p => p.Description)
+                .HasMaxLength(800);
+
+            entity.Property(p => p.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(p => new { p.AcademyId, p.Name })
+                .IsUnique();
+        });
+
+        builder.Entity<Course>(entity =>
+        {
+            entity.Property(c => c.Name)
+                .IsRequired()
+                .HasMaxLength(150);
+
+            entity.Property(c => c.Description)
+                .HasMaxLength(800);
+
+            entity.Property(c => c.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(c => new { c.AcademyId, c.ProgramId, c.Name })
+                .IsUnique();
+
+            entity.HasOne<Academy.Domain.Program>()
+                .WithMany()
+                .HasForeignKey(c => c.ProgramId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Level>(entity =>
+        {
+            entity.Property(l => l.Name)
+                .IsRequired()
+                .HasMaxLength(150);
+
+            entity.Property(l => l.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(l => new { l.AcademyId, l.CourseId, l.Name })
+                .IsUnique();
+
+            entity.HasOne<Course>()
+                .WithMany()
+                .HasForeignKey(l => l.CourseId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.ApplyAcademyScopedQueryFilters(() => _currentAcademyId);
