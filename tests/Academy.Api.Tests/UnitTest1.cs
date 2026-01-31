@@ -516,6 +516,74 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ParentPortal_Returns_Linked_Student()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var studentId = await CreateStudentAsync(client, "Child One");
+        var guardianId = await CreateGuardianAsync(client, "Parent One");
+
+        var (parentToken, parentUserId) = await RegisterWithUserAsync(client, $"parent_{Guid.NewGuid():N}@local.test", "Parent One");
+
+        var linkUserResponse = await client.PostAsJsonAsync($"/api/v1/guardians/{guardianId}/link-user", new
+        {
+            userId = parentUserId
+        });
+        linkUserResponse.EnsureSuccessStatusCode();
+
+        var linkStudentResponse = await client.PostAsJsonAsync($"/api/v1/students/{studentId}/guardians/{guardianId}", new
+        {
+            relation = "Parent"
+        });
+        linkStudentResponse.EnsureSuccessStatusCode();
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", parentToken);
+        var response = await client.GetAsync("/api/v1/parent/me/children");
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var items = document.RootElement.EnumerateArray().ToArray();
+        Assert.Single(items);
+        Assert.Equal(studentId, items[0].GetProperty("id").GetGuid());
+    }
+
+    [Fact]
+    public async Task ParentPortal_OtherParent_Sees_Empty_List()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var studentId = await CreateStudentAsync(client, "Child Two");
+        var guardianId = await CreateGuardianAsync(client, "Parent Two");
+
+        var (_, parentUserId) = await RegisterWithUserAsync(client, $"parent_{Guid.NewGuid():N}@local.test", "Parent Two");
+
+        var linkUserResponse = await client.PostAsJsonAsync($"/api/v1/guardians/{guardianId}/link-user", new
+        {
+            userId = parentUserId
+        });
+        linkUserResponse.EnsureSuccessStatusCode();
+
+        var linkStudentResponse = await client.PostAsJsonAsync($"/api/v1/students/{studentId}/guardians/{guardianId}", new
+        {
+            relation = "Parent"
+        });
+        linkStudentResponse.EnsureSuccessStatusCode();
+
+        var (otherParentToken, _) = await RegisterWithUserAsync(client, $"parent_{Guid.NewGuid():N}@local.test", "Other Parent");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", otherParentToken);
+
+        var response = await client.GetAsync("/api/v1/parent/me/children");
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Empty(document.RootElement.EnumerateArray());
+    }
+
+    [Fact]
     public async Task Programs_Courses_Levels_AdminCanCreate()
     {
         var client = _factory.CreateClient();
@@ -752,6 +820,26 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         return document.RootElement.GetProperty("accessToken").GetString() ?? string.Empty;
     }
 
+    private static async Task<(string AccessToken, Guid UserId)> RegisterWithUserAsync(
+        HttpClient client,
+        string email,
+        string displayName)
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            email,
+            password = "Parent123$",
+            displayName
+        });
+
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var accessToken = document.RootElement.GetProperty("accessToken").GetString() ?? string.Empty;
+        var userId = document.RootElement.GetProperty("user").GetProperty("id").GetGuid();
+        return (accessToken, userId);
+    }
+
     private async Task<(Guid UserId, string Token)> CreateInstructorAsync(HttpClient client, string email)
     {
         var password = "Instructor123$";
@@ -857,6 +945,30 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
             levelId,
             name,
             instructorUserId
+        });
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("id").GetGuid();
+    }
+
+    private static async Task<Guid> CreateStudentAsync(HttpClient client, string fullName)
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/students", new
+        {
+            fullName
+        });
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("id").GetGuid();
+    }
+
+    private static async Task<Guid> CreateGuardianAsync(HttpClient client, string fullName)
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/guardians", new
+        {
+            fullName
         });
         response.EnsureSuccessStatusCode();
 

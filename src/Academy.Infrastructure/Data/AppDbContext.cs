@@ -39,6 +39,10 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<Student> Students => Set<Student>();
 
+    public DbSet<Guardian> Guardians => Set<Guardian>();
+
+    public DbSet<StudentGuardian> StudentGuardians => Set<StudentGuardian>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -235,6 +239,44 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
             entity.Property(s => s.CreatedAtUtc)
                 .IsRequired();
+        });
+
+        builder.Entity<Guardian>(entity =>
+        {
+            entity.Property(g => g.FullName)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(g => g.Phone)
+                .HasMaxLength(30);
+
+            entity.Property(g => g.Email)
+                .HasMaxLength(254);
+
+            entity.Property(g => g.CreatedAtUtc)
+                .IsRequired();
+        });
+
+        builder.Entity<StudentGuardian>(entity =>
+        {
+            entity.Property(sg => sg.Relation)
+                .HasMaxLength(50);
+
+            entity.Property(sg => sg.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(sg => new { sg.AcademyId, sg.StudentId, sg.GuardianId })
+                .IsUnique();
+
+            entity.HasOne<Student>()
+                .WithMany()
+                .HasForeignKey(sg => sg.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Guardian>()
+                .WithMany()
+                .HasForeignKey(sg => sg.GuardianId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.ApplyAcademyScopedQueryFilters(() => _currentAcademyId);
