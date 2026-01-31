@@ -884,6 +884,108 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, forbiddenResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task Attendance_InstructorCanSubmitForOwnSession()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, adminUser) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var programId = await CreateProgramAsync(client, "Program A1");
+        var courseId = await CreateCourseAsync(client, programId, "Course A1");
+        var levelId = await CreateLevelAsync(client, courseId, "Level A1", 0);
+
+        var (instructorId, instructorToken) = await CreateInstructorAsync(client, "attendance_instructor1@local.test");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var groupId = await CreateGroupAsync(client, programId, courseId, levelId, "Group A1", instructorId);
+        var sessionId = await CreateSessionAsync(client, groupId, instructorId, DateTime.UtcNow.AddDays(1), 60);
+        var studentId = await CreateStudentAsync(client, "Student A1");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", instructorToken);
+        var response = await client.PostAsJsonAsync($"/api/v1/sessions/{sessionId}/attendance", new
+        {
+            items = new[]
+            {
+                new
+                {
+                    studentId,
+                    status = 1,
+                    note = "Present"
+                }
+            }
+        });
+
+        response.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task Attendance_InstructorForOtherSession_IsForbidden()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, adminUser) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var programId = await CreateProgramAsync(client, "Program A2");
+        var courseId = await CreateCourseAsync(client, programId, "Course A2");
+        var levelId = await CreateLevelAsync(client, courseId, "Level A2", 0);
+
+        var (instructorOneId, instructorOneToken) = await CreateInstructorAsync(client, "attendance_instructor2@local.test");
+        var (instructorTwoId, _) = await CreateInstructorAsync(client, "attendance_instructor3@local.test");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var groupId = await CreateGroupAsync(client, programId, courseId, levelId, "Group A2", instructorTwoId);
+        var sessionId = await CreateSessionAsync(client, groupId, instructorTwoId, DateTime.UtcNow.AddDays(2), 60);
+        var studentId = await CreateStudentAsync(client, "Student A2");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", instructorOneToken);
+        var response = await client.PostAsJsonAsync($"/api/v1/sessions/{sessionId}/attendance", new
+        {
+            items = new[]
+            {
+                new
+                {
+                    studentId,
+                    status = 2,
+                    note = "Absent"
+                }
+            }
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Attendance_AdminCanSubmit()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, adminUser) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var programId = await CreateProgramAsync(client, "Program A3");
+        var courseId = await CreateCourseAsync(client, programId, "Course A3");
+        var levelId = await CreateLevelAsync(client, courseId, "Level A3", 0);
+
+        var groupId = await CreateGroupAsync(client, programId, courseId, levelId, "Group A3", adminUser.Id);
+        var sessionId = await CreateSessionAsync(client, groupId, adminUser.Id, DateTime.UtcNow.AddDays(3), 60);
+        var studentId = await CreateStudentAsync(client, "Student A3");
+
+        var response = await client.PostAsJsonAsync($"/api/v1/sessions/{sessionId}/attendance", new
+        {
+            items = new[]
+            {
+                new
+                {
+                    studentId,
+                    status = 4,
+                    note = "Excused"
+                }
+            }
+        });
+
+        response.EnsureSuccessStatusCode();
+    }
+
     private async Task<(string AccessToken, string RefreshToken, UserSnapshot User)> LoginAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
@@ -1046,6 +1148,27 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
             levelId,
             name,
             instructorUserId
+        });
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("id").GetGuid();
+    }
+
+    private static async Task<Guid> CreateSessionAsync(
+        HttpClient client,
+        Guid groupId,
+        Guid instructorUserId,
+        DateTime startsAtUtc,
+        int durationMinutes)
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/sessions", new
+        {
+            groupId,
+            instructorUserId,
+            startsAtUtc,
+            durationMinutes,
+            notes = "Session"
         });
         response.EnsureSuccessStatusCode();
 

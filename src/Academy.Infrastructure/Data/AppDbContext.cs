@@ -45,6 +45,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
 
+    public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -302,6 +304,39 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
             entity.HasOne<Group>()
                 .WithMany()
                 .HasForeignKey(e => e.GroupId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<AttendanceRecord>(entity =>
+        {
+            entity.Property(a => a.Status)
+                .IsRequired();
+
+            entity.Property(a => a.Reason)
+                .HasMaxLength(200);
+
+            entity.Property(a => a.Note)
+                .HasMaxLength(500);
+
+            entity.Property(a => a.MarkedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(a => new { a.AcademyId, a.SessionId, a.StudentId })
+                .IsUnique();
+
+            entity.HasOne<Session>()
+                .WithMany()
+                .HasForeignKey(a => a.SessionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Student>()
+                .WithMany()
+                .HasForeignKey(a => a.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(a => a.MarkedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
