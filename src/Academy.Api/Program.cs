@@ -4,7 +4,9 @@ using System.Text.Json.Serialization;
 using Academy.Api.Health;
 using Academy.Api.Middleware;
 using Academy.Api.Security;
+using Academy.Api.Storage;
 using Academy.Api.Swagger;
+using Academy.Application.Abstractions.Media;
 using Academy.Application.Abstractions.Security;
 using Academy.Application.Options;
 using Academy.Application.Services;
@@ -78,6 +80,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<CreateDemoRequestValidator>
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection("GoogleAuth"));
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<IMediaStorage, LocalMediaStorage>();
 builder.Services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
 builder.Services.AddScoped<ITenantGuard, TenantGuard>();
 
@@ -204,6 +207,7 @@ if (!app.Environment.IsEnvironment("Testing"))
     app.UseHttpsRedirection();
 }
 
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseMiddleware<AcademyScopeMiddleware>();
 app.UseAuthorization();

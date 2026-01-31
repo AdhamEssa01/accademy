@@ -484,6 +484,38 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Students_AdminCanCreate()
+    {
+        var client = _factory.CreateClient();
+        var (accessToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var response = await client.PostAsJsonAsync("/api/v1/students", new
+        {
+            fullName = "Student One",
+            notes = "Notes"
+        });
+
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("Student One", document.RootElement.GetProperty("fullName").GetString());
+    }
+
+    [Fact]
+    public async Task Students_ParentCannotList()
+    {
+        var client = _factory.CreateClient();
+        var parentEmail = $"parent_{Guid.NewGuid():N}@local.test";
+        var parentToken = await RegisterAsync(client, parentEmail, "Parent User");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", parentToken);
+
+        var response = await client.GetAsync("/api/v1/students?page=1&pageSize=10");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Programs_Courses_Levels_AdminCanCreate()
     {
         var client = _factory.CreateClient();

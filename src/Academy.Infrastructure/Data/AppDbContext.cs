@@ -37,6 +37,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<Session> Sessions => Set<Session>();
 
+    public DbSet<Student> Students => Set<Student>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -217,6 +219,22 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
                 .WithMany()
                 .HasForeignKey(s => s.InstructorUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Student>(entity =>
+        {
+            entity.Property(s => s.FullName)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(s => s.PhotoUrl)
+                .HasMaxLength(500);
+
+            entity.Property(s => s.Notes)
+                .HasMaxLength(800);
+
+            entity.Property(s => s.CreatedAtUtc)
+                .IsRequired();
         });
 
         builder.ApplyAcademyScopedQueryFilters(() => _currentAcademyId);
