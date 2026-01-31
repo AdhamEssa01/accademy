@@ -23,7 +23,7 @@ Tasks 0.1–1.3 are completed:
 ## Progress
 - [x] Milestone 2.1 - Academy & Branch management (Admin)
 - [x] Milestone 2.2 - Programs/Courses/Levels CRUD (Admin)
-- [ ] Milestone 2.3 - Groups & Sessions (Admin + Instructor views)
+- [x] Milestone 2.3 - Groups & Sessions (Admin + Instructor views)
 - [ ] Milestone 3.1 - Students CRUD + Photo Upload (Admin/Staff)
 - [ ] Milestone 3.2 - Guardians + Parent portal read APIs (Admin + Parent)
 - [ ] Milestone 3.3 - Enrollments (Student <-> Group history)

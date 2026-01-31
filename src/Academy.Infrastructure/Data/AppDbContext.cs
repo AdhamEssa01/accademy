@@ -33,6 +33,10 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<Level> Levels => Set<Level>();
 
+    public DbSet<Group> Groups => Set<Group>();
+
+    public DbSet<Session> Sessions => Set<Session>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -157,6 +161,61 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
             entity.HasOne<Course>()
                 .WithMany()
                 .HasForeignKey(l => l.CourseId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Group>(entity =>
+        {
+            entity.Property(g => g.Name)
+                .IsRequired()
+                .HasMaxLength(150);
+
+            entity.Property(g => g.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasOne<Academy.Domain.Program>()
+                .WithMany()
+                .HasForeignKey(g => g.ProgramId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Course>()
+                .WithMany()
+                .HasForeignKey(g => g.CourseId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Level>()
+                .WithMany()
+                .HasForeignKey(g => g.LevelId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(g => g.InstructorUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Session>(entity =>
+        {
+            entity.Property(s => s.StartsAtUtc)
+                .IsRequired();
+
+            entity.Property(s => s.DurationMinutes)
+                .IsRequired();
+
+            entity.Property(s => s.Notes)
+                .HasMaxLength(800);
+
+            entity.Property(s => s.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasOne<Group>()
+                .WithMany()
+                .HasForeignKey(s => s.GroupId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(s => s.InstructorUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

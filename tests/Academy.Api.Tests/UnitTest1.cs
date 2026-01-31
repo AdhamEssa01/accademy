@@ -10,9 +10,12 @@ using Academy.Application.Abstractions.Auth;
 using Academy.Application.Contracts.Auth;
 using Academy.Application.Exceptions;
 using Academy.Infrastructure.Data;
+using Academy.Infrastructure.Identity;
+using Academy.Shared.Security;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -565,6 +568,121 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, forbiddenResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task Groups_InstructorCannotCreate()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var programId = await CreateProgramAsync(client, "Program G");
+        var courseId = await CreateCourseAsync(client, programId, "Course G");
+        var levelId = await CreateLevelAsync(client, courseId, "Level G", 0);
+
+        var (instructorId, instructorToken) = await CreateInstructorAsync(client, "instructor1@local.test");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", instructorToken);
+
+        var response = await client.PostAsJsonAsync("/api/v1/groups", new
+        {
+            programId,
+            courseId,
+            levelId,
+            name = "Group G",
+            instructorUserId = instructorId
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Groups_Mine_Returns_Only_Assigned()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var programId = await CreateProgramAsync(client, "Program H");
+        var courseId = await CreateCourseAsync(client, programId, "Course H");
+        var levelId = await CreateLevelAsync(client, courseId, "Level H", 0);
+
+        var (instructorOneId, instructorOneToken) = await CreateInstructorAsync(client, "instructor2@local.test");
+        var (instructorTwoId, _) = await CreateInstructorAsync(client, "instructor3@local.test");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        await CreateGroupAsync(client, programId, courseId, levelId, "Group One", instructorOneId);
+        await CreateGroupAsync(client, programId, courseId, levelId, "Group Two", instructorTwoId);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", instructorOneToken);
+        var response = await client.GetAsync("/api/v1/groups/mine?page=1&pageSize=10");
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var items = document.RootElement.GetProperty("items").EnumerateArray().ToArray();
+        Assert.Single(items);
+        Assert.Equal("Group One", items[0].GetProperty("name").GetString());
+    }
+
+    [Fact]
+    public async Task Sessions_Create_Respects_TenantScope()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, adminUser) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var programId = await CreateProgramAsync(client, "Program S");
+        var courseId = await CreateCourseAsync(client, programId, "Course S");
+        var levelId = await CreateLevelAsync(client, courseId, "Level S", 0);
+        var groupId = await CreateGroupAsync(client, programId, courseId, levelId, "Group S", adminUser.Id);
+
+        var createSessionResponse = await client.PostAsJsonAsync("/api/v1/sessions", new
+        {
+            groupId,
+            instructorUserId = adminUser.Id,
+            startsAtUtc = DateTime.UtcNow.AddDays(1),
+            durationMinutes = 60,
+            notes = "Session notes"
+        });
+        createSessionResponse.EnsureSuccessStatusCode();
+
+        var seedResponse = await client.PostAsync("/api/v1/tenant-debug/seed-second-academy", null);
+        if (!seedResponse.IsSuccessStatusCode)
+        {
+            var body = await seedResponse.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(
+                $"Seed endpoint failed: {(int)seedResponse.StatusCode} {seedResponse.ReasonPhrase}. Body: {body}");
+        }
+
+        client.DefaultRequestHeaders.Authorization = null;
+        var otherLogin = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            email = "otheradmin@local.test",
+            password = "Admin123$"
+        });
+        otherLogin.EnsureSuccessStatusCode();
+
+        using var otherLoginDocument = JsonDocument.Parse(await otherLogin.Content.ReadAsStringAsync());
+        var otherToken = otherLoginDocument.RootElement.GetProperty("accessToken").GetString();
+        var otherUserId = otherLoginDocument.RootElement.GetProperty("user").GetProperty("id").GetGuid();
+        Assert.False(string.IsNullOrWhiteSpace(otherToken));
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", otherToken);
+        var otherProgramId = await CreateProgramAsync(client, "Program Other");
+        var otherCourseId = await CreateCourseAsync(client, otherProgramId, "Course Other");
+        var otherLevelId = await CreateLevelAsync(client, otherCourseId, "Level Other", 0);
+        var otherGroupId = await CreateGroupAsync(client, otherProgramId, otherCourseId, otherLevelId, "Group Other", otherUserId);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var forbiddenResponse = await client.PostAsJsonAsync("/api/v1/sessions", new
+        {
+            groupId = otherGroupId,
+            instructorUserId = adminUser.Id,
+            startsAtUtc = DateTime.UtcNow.AddDays(2),
+            durationMinutes = 60
+        });
+
+        Assert.Equal(HttpStatusCode.NotFound, forbiddenResponse.StatusCode);
+    }
+
     private async Task<(string AccessToken, string RefreshToken, UserSnapshot User)> LoginAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
@@ -600,6 +718,118 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
 
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return document.RootElement.GetProperty("accessToken").GetString() ?? string.Empty;
+    }
+
+    private async Task<(Guid UserId, string Token)> CreateInstructorAsync(HttpClient client, string email)
+    {
+        var password = "Instructor123$";
+        client.DefaultRequestHeaders.Authorization = null;
+
+        var registerResponse = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            email,
+            password,
+            displayName = "Instructor"
+        });
+        registerResponse.EnsureSuccessStatusCode();
+
+        using var registerDoc = JsonDocument.Parse(await registerResponse.Content.ReadAsStringAsync());
+        var userId = registerDoc.RootElement.GetProperty("user").GetProperty("id").GetGuid();
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+            var user = await userManager.FindByIdAsync(userId.ToString());
+            if (user is null)
+            {
+                throw new InvalidOperationException("Instructor user not found.");
+            }
+
+            if (!await userManager.IsInRoleAsync(user, Roles.Instructor))
+            {
+                var result = await userManager.AddToRoleAsync(user, Roles.Instructor);
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    throw new InvalidOperationException($"Failed to assign instructor role: {errors}");
+                }
+            }
+        }
+
+        var loginResponse = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            email,
+            password
+        });
+        loginResponse.EnsureSuccessStatusCode();
+
+        using var loginDoc = JsonDocument.Parse(await loginResponse.Content.ReadAsStringAsync());
+        var token = loginDoc.RootElement.GetProperty("accessToken").GetString() ?? string.Empty;
+
+        return (userId, token);
+    }
+
+    private static async Task<Guid> CreateProgramAsync(HttpClient client, string name)
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/programs", new
+        {
+            name,
+            description = "Auto"
+        });
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("id").GetGuid();
+    }
+
+    private static async Task<Guid> CreateCourseAsync(HttpClient client, Guid programId, string name)
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/courses", new
+        {
+            programId,
+            name,
+            description = "Auto"
+        });
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("id").GetGuid();
+    }
+
+    private static async Task<Guid> CreateLevelAsync(HttpClient client, Guid courseId, string name, int sortOrder)
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/levels", new
+        {
+            courseId,
+            name,
+            sortOrder
+        });
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("id").GetGuid();
+    }
+
+    private static async Task<Guid> CreateGroupAsync(
+        HttpClient client,
+        Guid programId,
+        Guid courseId,
+        Guid levelId,
+        string name,
+        Guid? instructorUserId)
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/groups", new
+        {
+            programId,
+            courseId,
+            levelId,
+            name,
+            instructorUserId
+        });
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("id").GetGuid();
     }
 
     private static string CreateTokenWithoutAcademyClaim()

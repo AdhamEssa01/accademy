@@ -1,6 +1,7 @@
 using Academy.Application.Abstractions.Academy;
 using Academy.Application.Abstractions.Auth;
 using Academy.Application.Abstractions.Catalog;
+using Academy.Application.Abstractions.Scheduling;
 using Academy.Infrastructure.Auth;
 using Academy.Infrastructure.Services;
 using Academy.Infrastructure.Data;
@@ -36,6 +37,8 @@ public static class DependencyInjection
         services.AddScoped<IAcademyService, AcademyService>();
         services.AddScoped<IBranchService, BranchService>();
         services.AddScoped<IProgramCatalogService, ProgramCatalogService>();
+        services.AddScoped<IGroupService, GroupService>();
+        services.AddScoped<ISessionService, SessionService>();
         services.AddSingleton<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 
         return services;
