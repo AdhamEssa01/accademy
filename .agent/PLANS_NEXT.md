@@ -50,7 +50,7 @@
 - [x] Milestone 10.3 - Parent dashboard endpoints (children summary, attendance, homework, announcements, results)
 
 ### Final quality gate
-- [ ] Milestone 99.0 - Reliability & cleanup (remove dead code/files, tighten security, docs)
+- [x] Milestone 99.0 - Reliability & cleanup (remove dead code/files, tighten security, docs)
 
 ---
 

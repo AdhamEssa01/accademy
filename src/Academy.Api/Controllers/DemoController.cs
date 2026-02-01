@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Academy.Api.Controllers;
 
 [ApiController]
+[ApiExplorerSettings(IgnoreApi = true)]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/demo")]
 public sealed class DemoController : ControllerBase

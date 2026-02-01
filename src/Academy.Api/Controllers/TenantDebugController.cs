@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 namespace Academy.Api.Controllers;
 
 [ApiController]
+[ApiExplorerSettings(IgnoreApi = true)]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/tenant-debug")]
 public sealed class TenantDebugController : ControllerBase
