@@ -1298,6 +1298,128 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         Assert.Empty(document.RootElement.GetProperty("items").EnumerateArray());
     }
 
+    [Fact]
+    public async Task Announcements_Publish_CreatesNotifications_For_GroupParents()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, adminUser) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var programId = await CreateProgramAsync(client, "Program AN1");
+        var courseId = await CreateCourseAsync(client, programId, "Course AN1");
+        var levelId = await CreateLevelAsync(client, courseId, "Level AN1", 0);
+        var groupId = await CreateGroupAsync(client, programId, courseId, levelId, "Group AN1", adminUser.Id);
+        var studentId = await CreateStudentAsync(client, "Student AN1");
+
+        var startDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        await CreateEnrollmentAsync(client, studentId, groupId, startDate);
+
+        var guardianId = await CreateGuardianAsync(client, "Parent AN1");
+        var (parentToken, parentUserId) = await RegisterWithUserAsync(client, $"parent_{Guid.NewGuid():N}@local.test", "Parent AN1");
+
+        var linkUserResponse = await client.PostAsJsonAsync($"/api/v1/guardians/{guardianId}/link-user", new
+        {
+            userId = parentUserId
+        });
+        linkUserResponse.EnsureSuccessStatusCode();
+
+        var linkStudentResponse = await client.PostAsJsonAsync($"/api/v1/students/{studentId}/guardians/{guardianId}", new
+        {
+            relation = "Parent"
+        });
+        linkStudentResponse.EnsureSuccessStatusCode();
+
+        var createResponse = await client.PostAsJsonAsync("/api/v1/announcements", new
+        {
+            title = "Announcement One",
+            body = "Hello parents",
+            audience = 3,
+            groupId
+        });
+        createResponse.EnsureSuccessStatusCode();
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", parentToken);
+        var notificationsResponse = await client.GetAsync("/api/v1/notifications?page=1&pageSize=10");
+        var body = await notificationsResponse.Content.ReadAsStringAsync();
+        Assert.True(notificationsResponse.IsSuccessStatusCode, body);
+
+        using var document = JsonDocument.Parse(body);
+        var items = document.RootElement.GetProperty("items").EnumerateArray().ToArray();
+        Assert.Contains(items, item => item.GetProperty("title").GetString() == "Announcement One");
+    }
+
+    [Fact]
+    public async Task ParentAnnouncements_OnlyParentTargets()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, adminUser) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var programId = await CreateProgramAsync(client, "Program AN2");
+        var courseId = await CreateCourseAsync(client, programId, "Course AN2");
+        var levelId = await CreateLevelAsync(client, courseId, "Level AN2", 0);
+        var groupId = await CreateGroupAsync(client, programId, courseId, levelId, "Group AN2", adminUser.Id);
+        var studentId = await CreateStudentAsync(client, "Student AN2");
+
+        var startDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        await CreateEnrollmentAsync(client, studentId, groupId, startDate);
+
+        var guardianId = await CreateGuardianAsync(client, "Parent AN2");
+        var (parentToken, parentUserId) = await RegisterWithUserAsync(client, $"parent_{Guid.NewGuid():N}@local.test", "Parent AN2");
+
+        var linkUserResponse = await client.PostAsJsonAsync($"/api/v1/guardians/{guardianId}/link-user", new
+        {
+            userId = parentUserId
+        });
+        linkUserResponse.EnsureSuccessStatusCode();
+
+        var linkStudentResponse = await client.PostAsJsonAsync($"/api/v1/students/{studentId}/guardians/{guardianId}", new
+        {
+            relation = "Parent"
+        });
+        linkStudentResponse.EnsureSuccessStatusCode();
+
+        var allParentsResponse = await client.PostAsJsonAsync("/api/v1/announcements", new
+        {
+            title = "All Parents",
+            body = "Parents only",
+            audience = 1
+        });
+        allParentsResponse.EnsureSuccessStatusCode();
+
+        var allStaffResponse = await client.PostAsJsonAsync("/api/v1/announcements", new
+        {
+            title = "All Staff",
+            body = "Staff only",
+            audience = 2
+        });
+        allStaffResponse.EnsureSuccessStatusCode();
+
+        var groupParentsResponse = await client.PostAsJsonAsync("/api/v1/announcements", new
+        {
+            title = "Group Parents",
+            body = "Group only",
+            audience = 3,
+            groupId
+        });
+        groupParentsResponse.EnsureSuccessStatusCode();
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", parentToken);
+        var response = await client.GetAsync("/api/v1/parent/me/announcements?page=1&pageSize=10");
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var titles = document.RootElement.GetProperty("items")
+            .EnumerateArray()
+            .Select(item => item.GetProperty("title").GetString())
+            .Where(title => !string.IsNullOrWhiteSpace(title))
+            .ToArray();
+
+        Assert.Contains("All Parents", titles);
+        Assert.Contains("Group Parents", titles);
+        Assert.DoesNotContain("All Staff", titles);
+    }
+
     private async Task<(string AccessToken, string RefreshToken, UserSnapshot User)> LoginAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new

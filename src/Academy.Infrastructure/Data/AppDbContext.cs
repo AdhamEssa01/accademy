@@ -55,6 +55,10 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<AssignmentTarget> AssignmentTargets => Set<AssignmentTarget>();
 
+    public DbSet<Announcement> Announcements => Set<Announcement>();
+
+    public DbSet<Notification> Notifications => Set<Notification>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -439,6 +443,59 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
                 .WithMany()
                 .HasForeignKey(a => a.StudentId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Announcement>(entity =>
+        {
+            entity.Property(a => a.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(a => a.Body)
+                .IsRequired()
+                .HasMaxLength(5000);
+
+            entity.Property(a => a.PublishedAtUtc)
+                .IsRequired();
+
+            entity.Property(a => a.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasOne<Group>()
+                .WithMany()
+                .HasForeignKey(a => a.GroupId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(a => a.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Notification>(entity =>
+        {
+            entity.Property(n => n.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(n => n.Body)
+                .IsRequired()
+                .HasMaxLength(5000);
+
+            entity.Property(n => n.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(n => new { n.AcademyId, n.UserId });
+
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Announcement>()
+                .WithMany()
+                .HasForeignKey(n => n.AnnouncementId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.ApplyAcademyScopedQueryFilters(() => _currentAcademyId);

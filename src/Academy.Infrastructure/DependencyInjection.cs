@@ -1,10 +1,12 @@
 using Academy.Application.Abstractions.Academy;
+using Academy.Application.Abstractions.Announcements;
 using Academy.Application.Abstractions.Attendance;
 using Academy.Application.Abstractions.Auth;
 using Academy.Application.Abstractions.Assignments;
 using Academy.Application.Abstractions.Catalog;
 using Academy.Application.Abstractions.Enrollments;
 using Academy.Application.Abstractions.Guardians;
+using Academy.Application.Abstractions.Notifications;
 using Academy.Application.Abstractions.Parents;
 using Academy.Application.Abstractions.Scheduling;
 using Academy.Application.Abstractions.Students;
@@ -79,6 +81,8 @@ public static class DependencyInjection
         services.AddScoped<IAttendanceQueryService, AttendanceQueryService>();
         services.AddScoped<IAssignmentService, AssignmentService>();
         services.AddScoped<IAssignmentAttachmentService, AssignmentAttachmentService>();
+        services.AddScoped<IAnnouncementService, AnnouncementService>();
+        services.AddScoped<INotificationService, NotificationService>();
         services.AddSingleton<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 
         return services;
