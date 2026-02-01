@@ -1599,6 +1599,44 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         Assert.Equal(studentId, items[0].GetProperty("studentId").GetGuid());
     }
 
+    [Fact]
+    public async Task StudentRisk_ReturnsPagedAndFiltersTenant()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var studentId = await CreateStudentAsync(client, "Risk Student");
+
+        var seedResponse = await client.PostAsync("/api/v1/tenant-debug/seed-second-academy", null);
+        seedResponse.EnsureSuccessStatusCode();
+
+        client.DefaultRequestHeaders.Authorization = null;
+        var otherLogin = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            email = "otheradmin@local.test",
+            password = "Admin123$"
+        });
+        otherLogin.EnsureSuccessStatusCode();
+
+        using var otherLoginDocument = JsonDocument.Parse(await otherLogin.Content.ReadAsStringAsync());
+        var otherToken = otherLoginDocument.RootElement.GetProperty("accessToken").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(otherToken));
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", otherToken);
+        var otherStudentId = await CreateStudentAsync(client, "Other Risk Student");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var response = await client.GetAsync("/api/v1/students/risk?page=1&pageSize=10");
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var items = document.RootElement.GetProperty("items").EnumerateArray().ToArray();
+
+        Assert.Contains(items, item => item.GetProperty("studentId").GetGuid() == studentId);
+        Assert.DoesNotContain(items, item => item.GetProperty("studentId").GetGuid() == otherStudentId);
+    }
+
     private async Task<(string AccessToken, string RefreshToken, UserSnapshot User)> LoginAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new

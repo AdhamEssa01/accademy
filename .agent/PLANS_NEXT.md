@@ -30,7 +30,7 @@
 - [x] Milestone 5.2 - Student evaluations CRUD (Instructor/Staff) + Parent read
 
 - [x] Milestone 6.1 - Behavior events (points) CRUD (Staff) + Parent read
-- [ ] Milestone 6.2 - Behavior summaries & risk flags (Admin/Staff dashboards)
+- [x] Milestone 6.2 - Behavior summaries & risk flags (Admin/Staff dashboards)
 
 - [ ] Milestone 7.1 - Question bank (CRUD) (Staff)
 - [ ] Milestone 7.2 - Exam builder (create exams + attach questions) (Staff)

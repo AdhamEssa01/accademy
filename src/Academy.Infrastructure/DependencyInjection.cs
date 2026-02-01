@@ -53,6 +53,7 @@ public static class DependencyInjection
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<IRoutineSlotService, RoutineSlotService>();
         services.AddScoped<IStudentService, StudentService>();
+        services.AddScoped<IStudentRiskService, StudentRiskService>();
         services.AddScoped<IStudentPhotoService, StudentPhotoService>();
         services.AddScoped<IGuardianService, GuardianService>();
         services.AddScoped<IParentPortalService, ParentPortalService>();
