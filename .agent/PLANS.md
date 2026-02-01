@@ -45,7 +45,7 @@ Do NOT implement any payment-related domain models, endpoints, migrations, or UI
 ### Students & Parents
 - [x] Milestone 3.1 - Students CRUD + Photo Upload (Staff)
 - [x] Milestone 3.2 - Guardians + Parent portal read APIs (Admin + Parent)
-- [ ] Milestone 3.3 - Enrollments (Student <-> Group history)
+- [x] Milestone 3.3 - Enrollments (Student <-> Group history)
 
 ### Attendance
 - [ ] Milestone 4.1 - Attendance (bulk per session) + permissions
