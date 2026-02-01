@@ -49,7 +49,7 @@ Do NOT implement any payment-related domain models, endpoints, migrations, or UI
 
 ### Attendance
 - [x] Milestone 4.1 - Attendance (bulk per session) + permissions
-- [ ] Milestone 4.2 - Attendance queries + basic reporting endpoints
+- [x] Milestone 4.2 - Attendance queries + basic reporting endpoints
 
 ### Learning workflow (no payments)
 - [ ] Milestone 4.3 - Homework/Assignments (Staff create, Parent read)
