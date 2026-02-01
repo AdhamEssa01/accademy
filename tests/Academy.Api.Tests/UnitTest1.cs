@@ -1372,6 +1372,66 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         Assert.DoesNotContain("All Staff", titles);
     }
 
+    [Fact]
+    public async Task EvaluationTemplates_AdminCanCreateTemplateAndCriterion()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var templateId = await CreateEvaluationTemplateAsync(client, "Template A");
+        var criterionId = await CreateRubricCriterionAsync(client, templateId, "Participation", 10, 1.5m, 0);
+
+        var response = await client.GetAsync($"/api/v1/evaluation-templates/{templateId}/criteria?page=1&pageSize=10");
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var items = document.RootElement.GetProperty("items").EnumerateArray().ToArray();
+        Assert.Single(items);
+        Assert.Equal(criterionId, items[0].GetProperty("id").GetGuid());
+    }
+
+    [Fact]
+    public async Task EvaluationTemplates_ParentForbidden()
+    {
+        var client = _factory.CreateClient();
+        var parentToken = await RegisterAsync(client, $"parent_{Guid.NewGuid():N}@local.test", "Parent Eval");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", parentToken);
+
+        var response = await client.GetAsync("/api/v1/evaluation-templates?page=1&pageSize=10");
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task EvaluationTemplates_TenantIsolation_Hides_OtherAcademy()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var seedResponse = await client.PostAsync("/api/v1/tenant-debug/seed-second-academy", null);
+        seedResponse.EnsureSuccessStatusCode();
+
+        client.DefaultRequestHeaders.Authorization = null;
+        var otherLogin = await client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            email = "otheradmin@local.test",
+            password = "Admin123$"
+        });
+        otherLogin.EnsureSuccessStatusCode();
+
+        using var otherLoginDocument = JsonDocument.Parse(await otherLogin.Content.ReadAsStringAsync());
+        var otherToken = otherLoginDocument.RootElement.GetProperty("accessToken").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(otherToken));
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", otherToken);
+        var otherTemplateId = await CreateEvaluationTemplateAsync(client, "Template Other");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var response = await client.GetAsync($"/api/v1/evaluation-templates/{otherTemplateId}");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     private async Task<(string AccessToken, string RefreshToken, UserSnapshot User)> LoginAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
@@ -1648,6 +1708,40 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
             studentId,
             groupId,
             startDate
+        });
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("id").GetGuid();
+    }
+
+    private static async Task<Guid> CreateEvaluationTemplateAsync(HttpClient client, string name)
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/evaluation-templates", new
+        {
+            name,
+            description = "Template"
+        });
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("id").GetGuid();
+    }
+
+    private static async Task<Guid> CreateRubricCriterionAsync(
+        HttpClient client,
+        Guid templateId,
+        string name,
+        int maxScore,
+        decimal weight,
+        int sortOrder)
+    {
+        var response = await client.PostAsJsonAsync($"/api/v1/evaluation-templates/{templateId}/criteria", new
+        {
+            name,
+            maxScore,
+            weight,
+            sortOrder
         });
         response.EnsureSuccessStatusCode();
 

@@ -59,6 +59,10 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<Notification> Notifications => Set<Notification>();
 
+    public DbSet<EvaluationTemplate> EvaluationTemplates => Set<EvaluationTemplate>();
+
+    public DbSet<RubricCriterion> RubricCriteria => Set<RubricCriterion>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -496,6 +500,61 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
                 .WithMany()
                 .HasForeignKey(n => n.AnnouncementId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<EvaluationTemplate>(entity =>
+        {
+            entity.Property(t => t.Name)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(t => t.Description)
+                .HasMaxLength(800);
+
+            entity.Property(t => t.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasOne<Academy.Domain.Program>()
+                .WithMany()
+                .HasForeignKey(t => t.ProgramId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Course>()
+                .WithMany()
+                .HasForeignKey(t => t.CourseId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Level>()
+                .WithMany()
+                .HasForeignKey(t => t.LevelId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<RubricCriterion>(entity =>
+        {
+            entity.Property(c => c.Name)
+                .IsRequired()
+                .HasMaxLength(150);
+
+            entity.Property(c => c.MaxScore)
+                .IsRequired();
+
+            entity.Property(c => c.Weight)
+                .HasColumnType("decimal(5,2)");
+
+            entity.Property(c => c.SortOrder)
+                .IsRequired();
+
+            entity.Property(c => c.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(c => new { c.AcademyId, c.TemplateId, c.Name })
+                .IsUnique();
+
+            entity.HasOne<EvaluationTemplate>()
+                .WithMany()
+                .HasForeignKey(c => c.TemplateId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.ApplyAcademyScopedQueryFilters(() => _currentAcademyId);

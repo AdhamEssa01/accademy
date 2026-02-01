@@ -26,7 +26,7 @@
 - [x] Milestone 2.0 - SQL Server only (Server=.) + purge SQLite completely
 
 ### Learning modules
-- [ ] Milestone 5.1 - Evaluation templates (Rubrics) CRUD (Admin)
+- [x] Milestone 5.1 - Evaluation templates (Rubrics) CRUD (Admin)
 - [ ] Milestone 5.2 - Student evaluations CRUD (Instructor/Staff) + Parent read
 
 - [ ] Milestone 6.1 - Behavior events (points) CRUD (Staff) + Parent read
