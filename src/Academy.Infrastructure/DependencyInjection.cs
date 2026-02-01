@@ -1,6 +1,7 @@
 using Academy.Application.Abstractions.Academy;
 using Academy.Application.Abstractions.Attendance;
 using Academy.Application.Abstractions.Auth;
+using Academy.Application.Abstractions.Assignments;
 using Academy.Application.Abstractions.Catalog;
 using Academy.Application.Abstractions.Enrollments;
 using Academy.Application.Abstractions.Guardians;
@@ -76,6 +77,8 @@ public static class DependencyInjection
         services.AddScoped<IEnrollmentService, EnrollmentService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<IAttendanceQueryService, AttendanceQueryService>();
+        services.AddScoped<IAssignmentService, AssignmentService>();
+        services.AddScoped<IAssignmentAttachmentService, AssignmentAttachmentService>();
         services.AddSingleton<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 
         return services;

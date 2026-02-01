@@ -49,6 +49,12 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
 
+    public DbSet<Assignment> Assignments => Set<Assignment>();
+
+    public DbSet<AssignmentAttachment> AssignmentAttachments => Set<AssignmentAttachment>();
+
+    public DbSet<AssignmentTarget> AssignmentTargets => Set<AssignmentTarget>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -367,6 +373,71 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
             entity.HasOne<AppUser>()
                 .WithMany()
                 .HasForeignKey(a => a.MarkedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Assignment>(entity =>
+        {
+            entity.Property(a => a.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(a => a.Description)
+                .HasMaxLength(2000);
+
+            entity.Property(a => a.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasOne<Group>()
+                .WithMany()
+                .HasForeignKey(a => a.GroupId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(a => a.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<AssignmentAttachment>(entity =>
+        {
+            entity.Property(a => a.FileUrl)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.Property(a => a.FileName)
+                .IsRequired()
+                .HasMaxLength(255);
+
+            entity.Property(a => a.ContentType)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(a => a.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasOne<Assignment>()
+                .WithMany()
+                .HasForeignKey(a => a.AssignmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<AssignmentTarget>(entity =>
+        {
+            entity.Property(a => a.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(a => new { a.AcademyId, a.AssignmentId, a.StudentId })
+                .IsUnique();
+
+            entity.HasOne<Assignment>()
+                .WithMany()
+                .HasForeignKey(a => a.AssignmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Student>()
+                .WithMany()
+                .HasForeignKey(a => a.StudentId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

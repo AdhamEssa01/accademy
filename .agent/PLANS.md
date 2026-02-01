@@ -52,7 +52,7 @@ Do NOT implement any payment-related domain models, endpoints, migrations, or UI
 - [x] Milestone 4.2 - Attendance queries + basic reporting endpoints
 
 ### Learning workflow (no payments)
-- [ ] Milestone 4.3 - Homework/Assignments (Staff create, Parent read)
+- [x] Milestone 4.3 - Homework/Assignments (Staff create, Parent read)
 - [ ] Milestone 4.4 - Communication/Announcements + In-app notifications (Admin/Staff -> Parent)
 
 ### Quality gate
