@@ -1,4 +1,5 @@
 using Academy.Application.Abstractions.Academy;
+using Academy.Application.Abstractions.Achievements;
 using Academy.Application.Abstractions.Announcements;
 using Academy.Application.Abstractions.Attendance;
 using Academy.Application.Abstractions.Auth;
@@ -69,6 +70,7 @@ public static class DependencyInjection
         services.AddScoped<IAnnouncementService, AnnouncementService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<ICmsService, CmsService>();
+        services.AddScoped<IAchievementService, AchievementService>();
         services.AddScoped<IEvaluationTemplateService, EvaluationTemplateService>();
         services.AddScoped<IEvaluationService, EvaluationService>();
         services.AddScoped<IQuestionBankService, QuestionBankService>();

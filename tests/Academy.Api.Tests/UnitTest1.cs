@@ -2312,6 +2312,35 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Achievements_PublicList_ReturnsItems()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var createResponse = await client.PostAsJsonAsync("/api/v1/achievements", new
+        {
+            title = "First Achievement",
+            description = "Desc",
+            dateUtc = DateTime.UtcNow,
+            mediaUrl = "https://example.com/image.png",
+            tags = "tag"
+        });
+        createResponse.EnsureSuccessStatusCode();
+
+        using var createDoc = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var achievementId = createDoc.RootElement.GetProperty("id").GetGuid();
+
+        client.DefaultRequestHeaders.Authorization = null;
+        var listResponse = await client.GetAsync("/api/v1/public/achievements?page=1&pageSize=10");
+        listResponse.EnsureSuccessStatusCode();
+
+        using var listDoc = JsonDocument.Parse(await listResponse.Content.ReadAsStringAsync());
+        var items = listDoc.RootElement.GetProperty("items").EnumerateArray().ToArray();
+        Assert.Contains(items, item => item.GetProperty("id").GetGuid() == achievementId);
+    }
+
+    [Fact]
     public async Task ExamResults_ParentSeesOnlyChildren()
     {
         var client = _factory.CreateClient();

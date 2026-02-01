@@ -42,7 +42,7 @@
 
 ### CMS / Website content
 - [x] Milestone 8.1 - CMS Pages & Sections (Admin edit/publish) + Public read endpoints
-- [ ] Milestone 8.2 - Achievements CRUD (Admin) + Public read endpoints
+- [x] Milestone 8.2 - Achievements CRUD (Admin) + Public read endpoints
 
 ### Dashboards
 - [ ] Milestone 10.1 - Admin dashboard endpoints (KPIs: attendance, evals, behavior, exams)

@@ -87,6 +87,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<CmsSection> CmsSections => Set<CmsSection>();
 
+    public DbSet<Achievement> Achievements => Set<Achievement>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -664,6 +666,30 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
                 .WithMany()
                 .HasForeignKey(s => s.PageId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<Achievement>(entity =>
+        {
+            entity.Property(a => a.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(a => a.Description)
+                .HasMaxLength(2000);
+
+            entity.Property(a => a.MediaUrl)
+                .HasMaxLength(500);
+
+            entity.Property(a => a.Tags)
+                .HasMaxLength(200);
+
+            entity.Property(a => a.DateUtc)
+                .IsRequired();
+
+            entity.Property(a => a.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(a => new { a.AcademyId, a.DateUtc });
         });
 
         builder.Entity<Assignment>(entity =>
