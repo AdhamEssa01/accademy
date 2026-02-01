@@ -33,7 +33,18 @@ dotnet ef migrations add AddRefreshTokens -p src/Academy.Infrastructure -s src/A
 ```
 
 ## Development Database
-The SQLite file is created at `academy_dev.db` in the working directory (repo root when running from the root).
+Local development uses SQL Server LocalDB by default.
+
+SSMS connection:
+- Server name: `(localdb)\MSSQLLocalDB`
+- Database: `AcademyDev`
+
+Apply migrations:
+```powershell
+dotnet ef database update -p src/Academy.Infrastructure -s src/Academy.Api
+```
+
+SQLite remains available as a fallback provider (set `Database:Provider` to `Sqlite`).
 
 ## Dev Admin Credentials (DEV ONLY)
 - Email: `admin@local.test`

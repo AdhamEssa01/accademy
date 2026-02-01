@@ -45,6 +45,7 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
+                    ["Database:Provider"] = "Sqlite",
                     ["ConnectionStrings:Default"] = $"Data Source={_dbPath}",
                     ["Jwt:Issuer"] = TestIssuer,
                     ["Jwt:Audience"] = TestAudience,

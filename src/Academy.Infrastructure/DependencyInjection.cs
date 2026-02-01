@@ -28,9 +28,33 @@ public static class DependencyInjection
             throw new InvalidOperationException("Connection string 'Default' not found.");
         }
 
+        var provider = config["Database:Provider"];
+        if (string.IsNullOrWhiteSpace(provider))
+        {
+            var environment = config["ASPNETCORE_ENVIRONMENT"];
+            provider = string.Equals(environment, "Development", StringComparison.OrdinalIgnoreCase)
+                ? "SqlServer"
+                : "Sqlite";
+        }
+
         services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlite(connectionString, b =>
-                b.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)));
+        {
+            if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
+            {
+                options.UseSqlServer(connectionString, b =>
+                    b.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
+                return;
+            }
+
+            if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
+            {
+                options.UseSqlite(connectionString, b =>
+                    b.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
+                return;
+            }
+
+            throw new InvalidOperationException($"Unsupported database provider '{provider}'.");
+        });
 
         services.AddIdentityCore<AppUser>()
             .AddRoles<IdentityRole<Guid>>()

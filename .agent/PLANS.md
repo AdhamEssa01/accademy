@@ -1,489 +1,340 @@
-# Academy Backend ExecPlan (starting after Task 1.3)
+# Academy Backend ExecPlan (Updated) — after Task 1.3
 
 ## Context
 Tasks 0.1–1.3 are completed:
 - Clean Architecture projects (Api/Application/Domain/Infrastructure/Shared) + tests
-- EF Core + Identity (Guid keys), SQLite dev DB, migrations, dev seeding
-- ProblemDetails middleware, FluentValidation pipeline, pagination helpers
+- EF Core + Identity (Guid keys), migrations + dev seeding
+- ProblemDetails middleware, FluentValidation, pagination helpers
 - API versioning + Swagger + health checks
 - JWT access/refresh tokens, Google login
-- RBAC policies + tenant (AcademyId) scoping mechanism with query filters
-- Current user context + tenant guard + debug endpoints (Dev-gated)
+- RBAC policies + tenant (AcademyId) scoping with query filters
+- Current user context + tenant guard + debug endpoints
+
+## Key product decision
+Payments / billing / fees are deferred.
+Do NOT implement any payment-related domain models, endpoints, migrations, or UI contracts.
 
 ## Global rules for all milestones
-- Do not implement modules that are not explicitly included in the milestone.
-- Keep controllers thin; put business logic in Application services/use-cases.
-- All academy-scoped entities MUST implement IAcademyScoped and be protected by tenant query filters.
-- Authorization must use existing Policies (Admin/Instructor/Parent/Student/Staff/AnyAuthenticated).
-- Every milestone must end with:
-  - dotnet test
-  - Progress update (checklist)
-  - Git commit: "milestone X.Y - <short title>"
+- Keep file structure tidy and names expressive:
+  - Domain: Entities, Enums, Interfaces
+  - Application: Contracts (Requests/Responses), Validators, Services/UseCases, Exceptions
+  - Infrastructure: Persistence (DbContext, Configurations, Migrations), Auth providers, Storage providers
+  - Api: Controllers, Middleware, Options, Swagger, Extensions
+- Delete unused files ONLY if:
+  - They are not referenced anywhere (search usage)
+  - dotnet test passes afterward
+  - You also update docs/tests if they referenced them
+- Every academy-scoped entity MUST implement IAcademyScoped and rely on tenant filters (no IgnoreQueryFilters).
+- All endpoints must use Policies (Admin/Instructor/Parent/Student/Staff/AnyAuthenticated).
+- After each milestone:
+  - Run: dotnet test
+  - Update the Progress checklist
+  - Commit: "milestone X.Y - <short title>"
 
 ## Progress
-- [x] Milestone 2.1 - Academy & Branch management (Admin)
-- [x] Milestone 2.2 - Programs/Courses/Levels CRUD (Admin)
-- [x] Milestone 2.3 - Groups & Sessions (Admin + Instructor views)
-- [x] Milestone 3.1 - Students CRUD + Photo Upload (Admin/Staff)
-- [x] Milestone 3.2 - Guardians + Parent portal read APIs (Admin + Parent)
-- [x] Milestone 3.3 - Enrollments (Student <-> Group history)
-- [x] Milestone 4.1 - Attendance (bulk per session) + permissions
-- [x] Milestone 4.2 - Attendance queries + basic reporting endpoints
+### Foundation updates
+- [x] Milestone 1.4 - Switch Dev DB to SQL Server (SSMS-visible) + keep tests isolated
+- [ ] Milestone 1.5 - Security hardening baseline (rate limit, headers, CORS, secrets)
+
+### Core academy structure
+- [ ] Milestone 2.1 - Academy & Branch management (Admin)
+- [ ] Milestone 2.2 - Programs/Courses/Levels CRUD (Admin)
+- [ ] Milestone 2.3 - Groups & Sessions (Admin + Instructor views)
+- [ ] Milestone 2.4 - Weekly Timetable (Routine) derived to Sessions (Admin + Instructor view)
+
+### Students & Parents
+- [ ] Milestone 3.1 - Students CRUD + Photo Upload (Staff)
+- [ ] Milestone 3.2 - Guardians + Parent portal read APIs (Admin + Parent)
+- [ ] Milestone 3.3 - Enrollments (Student <-> Group history)
+
+### Attendance
+- [ ] Milestone 4.1 - Attendance (bulk per session) + permissions
+- [ ] Milestone 4.2 - Attendance queries + basic reporting endpoints
+
+### Learning workflow (no payments)
+- [ ] Milestone 4.3 - Homework/Assignments (Staff create, Parent read)
+- [ ] Milestone 4.4 - Communication/Announcements + In-app notifications (Admin/Staff -> Parent)
+
+### Quality gate
+- [ ] Milestone 4.9 - Codebase hygiene (remove demo endpoints if not needed, dotnet format, delete unused)
+
+---
+
+# Milestone 1.4 - Switch Dev DB to SQL Server (SSMS-visible) + keep tests isolated
+
+## Goal
+Make the local dev database show up in SSMS.
+- Development runtime DB provider: SQL Server (LocalDB preferred).
+- Tests keep using SQLite (or in-memory) for isolation/speed.
+- Migrations remain in Academy.Infrastructure.
+
+## Changes
+1) Introduce a provider switch in configuration:
+- appsettings.Development.json:
+  - Database:Provider = "SqlServer"
+  - ConnectionStrings:Default = "Server=(localdb)\\MSSQLLocalDB;Database=AcademyDev;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
+- appsettings.json:
+  - Database:Provider = "Sqlite" (optional fallback) or omit
+
+2) Update AddInfrastructure(...) to select provider based on Database:Provider:
+- If "SqlServer": UseSqlServer(connString, b => b.MigrationsAssembly(...))
+- If "Sqlite": UseSqlite(connString, Consider migrations assembly)
+- Default to SqlServer in Development if not specified.
+
+3) Ensure design-time factory supports SQL Server by default (read appsettings.Development.json if present).
+
+4) Update HealthChecks readiness DB check to still use AppDbContext.
+
+5) Docs:
+- README: how to connect in SSMS:
+  - Server name: (localdb)\\MSSQLLocalDB
+  - Database: AcademyDev
+- Add command:
+  - dotnet ef database update -p src/Academy.Infrastructure -s src/Academy.Api
+
+## Verification
+- dotnet test
+- dotnet run --project src/Academy.Api
+- Confirm in SSMS you can see AcademyDev
+
+---
+
+# Milestone 1.5 - Security hardening baseline (rate limit, headers, CORS, secrets)
+
+## Goal
+Harden the API before adding more modules.
+
+## Requirements
+1) Secrets hygiene:
+- Move Jwt:Key out of appsettings*.json for dev:
+  - Use dotnet user-secrets in Academy.Api
+  - README shows how to set: dotnet user-secrets set "Jwt:Key" "..."
+- Keep a fallback for CI/tests via environment variables.
+
+2) Rate limiting (built-in .NET):
+- Add Microsoft.AspNetCore.RateLimiting
+- Configure policies:
+  - "auth" fixed window: 10 req/min/IP for:
+    /api/v1/auth/login
+    /api/v1/auth/register
+    /api/v1/auth/refresh
+    /api/v1/auth/google
+  - "general" fixed window: 120 req/min/IP for other endpoints
+- Ensure 429 responses are ProblemDetails.
+
+3) Security headers middleware:
+- Add simple response headers:
+  - X-Content-Type-Options: nosniff
+  - X-Frame-Options: DENY
+  - Referrer-Policy: no-referrer
+  - Permissions-Policy: minimal (optional)
+- HTTPS:
+  - app.UseHttpsRedirection()
+  - HSTS enabled only outside Development
+
+4) CORS allowlist:
+- Read AllowedOrigins from config and allow only those.
+- Disallow wildcard in Production.
+
+5) Request limits:
+- Limit multipart upload size (e.g., 2–5 MB for student photos)
+- Validate allowed content types for uploads
+
+## Tests
+- Add at least one integration test:
+  - auth rate limit returns 429 after exceeding threshold (can be a light test with retries)
+  - CORS headers present for allowed origin (optional)
+
+## Verification
+- dotnet test
 
 ---
 
 # Milestone 2.1 - Academy & Branch management (Admin)
-
-## Goal
-Add minimal Academy and Branch management APIs:
-- Admin can view/update their own Academy details.
-- Admin can CRUD Branches (optional multi-branch support).
-
-## Domain/Entities (Academy.Domain)
-1) Branch : IAcademyScoped
-- Guid Id
-- Guid AcademyId
-- string Name (required, max 200)
-- string? Address (max 400)
-- DateTime CreatedAtUtc
-
-Academy entity already exists; do NOT make it academy-scoped.
-
-## Infrastructure (Academy.Infrastructure)
-- Add DbSet<Branch>
-- Configure constraints and indexes:
-  - Required Name, max lengths
-  - Index on (AcademyId, Name) unique
-- Create migration:
-  - Name: AddBranches
-  - Keep migrations under Infrastructure migrations folder
-
-## Application (Academy.Application)
-Create DTOs + validators:
-- Academy/UpdateAcademyRequest: Name (2..200)
-- Branches:
-  - CreateBranchRequest: Name (2..200), Address (0..400)
-  - UpdateBranchRequest: Name (2..200), Address (0..400)
-Use FluentValidation.
-
-Add services/use-cases:
-- IAcademyService:
-  - Task<AcademyDto> GetMyAcademyAsync(ct)
-  - Task<AcademyDto> UpdateMyAcademyAsync(UpdateAcademyRequest req, ct)
-- IBranchService:
-  - Task<PagedResponse<BranchDto>> ListAsync(PagedRequest, ct)
-  - Task<BranchDto> GetAsync(Guid id, ct)
-  - Task<BranchDto> CreateAsync(CreateBranchRequest req, ct)
-  - Task<BranchDto> UpdateAsync(Guid id, UpdateBranchRequest req, ct)
-  - Task DeleteAsync(Guid id, ct)
-
-Rules:
-- Must use tenant scope from ICurrentUserContext/ITenantGuard.
-- Branch queries must rely on tenant filter (no IgnoreQueryFilters).
-
-## API (Academy.Api)
-Add controllers (versioned):
-- AcademiesController:
-  - [Authorize(Policy=Policies.Admin)]
-  - GET  /api/v1/academies/me
-  - PUT  /api/v1/academies/me
-- BranchesController:
-  - [Authorize(Policy=Policies.Admin)]
-  - GET  /api/v1/branches?page=&pageSize=
-  - GET  /api/v1/branches/{id}
-  - POST /api/v1/branches
-  - PUT  /api/v1/branches/{id}
-  - DELETE /api/v1/branches/{id}
-
-## Tests
-Add integration tests in Academy.Api.Tests:
-1) Admin can create and list branches.
-2) Parent cannot create branch (403).
-Ensure DB is isolated per test run.
-
-## Verification
-- dotnet build
-- dotnet test
-
-## Output
-- Summarize changes, list files, include migration command used.
+(Keep the same spec as previously planned: AcademiesController + BranchesController, Branch is academy-scoped.)
+- Branch: IAcademyScoped, unique (AcademyId, Name)
+- Admin-only endpoints
+- Migration: AddBranches
+- Integration tests for permissions and CRUD
 
 ---
 
 # Milestone 2.2 - Programs/Courses/Levels CRUD (Admin)
-
-## Goal
-Implement program structure for multi-discipline academy:
-- Program -> Course -> Level
-All scoped by AcademyId.
-
-## Domain/Entities (Academy.Domain)
-All must implement IAcademyScoped:
-1) Program
-- Id, AcademyId, Name (required max 150), Description? (max 800), CreatedAtUtc
-2) Course
-- Id, AcademyId, ProgramId, Name (required max 150), Description? (max 800), CreatedAtUtc
-3) Level
-- Id, AcademyId, CourseId, Name (required max 150), SortOrder (int), CreatedAtUtc
-
-Relationships:
-- Program 1..* Courses
-- Course 1..* Levels
-
-## Infrastructure
-- Add DbSets and Fluent API configuration:
-  - Unique index (AcademyId, Name) on Program
-  - Unique index (AcademyId, ProgramId, Name) on Course
-  - Unique index (AcademyId, CourseId, Name) on Level
-  - FK constraints
-- Migration name: AddProgramStructure
-
-## Application
-DTOs + validators:
-- Create/Update Program/Course/Level requests (name length rules, sortOrder >= 0)
-Services:
-- IProgramCatalogService with CRUD for all three resources
-- List endpoints must be paged (use PagedRequest/PagedResponse)
-Filtering:
-- Courses list can filter by programId
-- Levels list can filter by courseId
-
-## API
-Controllers (Admin only):
-- ProgramsController: /api/v1/programs
-- CoursesController:  /api/v1/courses?programId=
-- LevelsController:   /api/v1/levels?courseId=
-CRUD endpoints for each.
-
-## Tests
-Integration tests:
-1) Admin creates Program->Course->Level successfully.
-2) Tenant filter works: create a second academy via existing debug endpoint (Dev) and ensure Admin A cannot see Admin B programs (404 or empty list).
-
-## Verification
-- dotnet test
+(Keep the same spec as previously planned.)
+- Program/Course/Level are academy-scoped
+- Unique indexes
+- Migration: AddProgramStructure
+- Integration tests include tenant isolation using the existing debug seed second academy pattern
 
 ---
 
 # Milestone 2.3 - Groups & Sessions (Admin + Instructor views)
-
-## Goal
-Create teaching groups and sessions:
-- Admin can CRUD groups and sessions.
-- Instructor can list their own assigned groups/sessions.
-
-## Domain/Entities
-All academy-scoped:
-1) Group
-- Id, AcademyId
-- ProgramId, CourseId, LevelId (required)
-- string Name (required max 150)
-- Guid InstructorUserId (nullable at creation)
-- DateTime CreatedAtUtc
-
-2) Session
-- Id, AcademyId
-- GroupId (required)
-- Guid InstructorUserId (required)  // snapshot at time of session
-- DateTime StartsAtUtc (required)
-- int DurationMinutes (required, 15..360)
-- string? Notes (max 800)
-- DateTime CreatedAtUtc
-
-Rules:
-- If Group has no instructor, Admin must assign before creating sessions, OR Session creation must accept instructor id explicitly.
-- Instructor can only view sessions where Session.InstructorUserId == currentUserId.
-
-## Infrastructure
-- DbSets + constraints + indexes
+(Keep the same spec as previously planned.)
+- Group and Session are academy-scoped
+- Instructor "mine" endpoints filtered by InstructorUserId
 - Migration: AddGroupsAndSessions
-
-## Application
-DTOs + validators:
-- Create/Update Group
-- Assign instructor request
-- Create/Update Session
-Services:
-- IGroupService (CRUD + assign instructor + instructor-specific list)
-- ISessionService (CRUD + list by group/date range + instructor list)
-
-## API
-Controllers:
-- GroupsController:
-  - Admin endpoints: CRUD + assign instructor
-  - Instructor endpoints: GET /api/v1/groups/mine
-- SessionsController:
-  - Admin endpoints: CRUD + list
-  - Instructor endpoints: GET /api/v1/sessions/mine?from=&to=
-
-Authorization:
-- Admin endpoints: Policies.Admin
-- Instructor endpoints: Policies.Instructor (and filter by InstructorUserId)
-
-## Tests
-Integration tests:
-1) Instructor cannot access admin-only group create (403).
-2) Instructor /groups/mine returns only their groups.
-3) Creating session requires valid group and respects tenant scoping.
-
-## Verification
-- dotnet test
+- Tests for permissions and filtering
 
 ---
 
-# Milestone 3.1 - Students CRUD + Photo Upload (Admin/Staff)
+# Milestone 2.4 - Weekly Timetable (Routine) derived to Sessions (Admin + Instructor view)
 
 ## Goal
-Add Students module:
-- Admin/Staff can CRUD students.
-- Upload student photo (multipart) and store URL.
-- Use local disk storage abstraction.
+Add a Weekly Routine layer to represent recurring schedule, and optionally generate Sessions.
 
 ## Domain/Entities
-Student : IAcademyScoped
+RoutineSlot : IAcademyScoped
 - Id, AcademyId
-- FullName (required max 200)
-- DateOnly? DateOfBirth (optional)
-- string? PhotoUrl (max 500)
-- string? Notes (max 800)
+- GroupId
+- DayOfWeek (0..6)
+- TimeOnly StartTime
+- int DurationMinutes (15..360)
+- Guid InstructorUserId (required)
 - DateTime CreatedAtUtc
+Unique index: (AcademyId, GroupId, DayOfWeek, StartTime)
 
-## Infrastructure
-- DbSet<Student>, config + migration: AddStudents
-- Create storage abstraction in Shared or Application:
-  - IMediaStorage
-    - Task<string> SaveAsync(Stream content, string contentType, string fileName, string folder, ct)
-- Implement LocalMediaStorage in Academy.Api (or Infrastructure) writing to:
-  - /src/Academy.Api/wwwroot/uploads/students/
-- Expose static files in Api:
-  - app.UseStaticFiles()
-- PhotoUrl should be a relative URL like: /uploads/students/<file>
-
-## Application
-DTOs + validators:
-- CreateStudentRequest, UpdateStudentRequest
-Services:
-- IStudentService CRUD
-- IStudentPhotoService:
-  - UploadAsync(studentId, IFormFile file, ct)
-Validation:
-- File type: allow jpg/png/webp
-- Max size: 2MB
+Optional (nice):
+- Endpoint to "Generate sessions for date range" using routine slots.
 
 ## API
-StudentsController (Policies.Staff):
-- GET /api/v1/students (paged)
-- GET /api/v1/students/{id}
-- POST /api/v1/students
-- PUT /api/v1/students/{id}
-- DELETE /api/v1/students/{id}
-- POST /api/v1/students/{id}/photo (multipart/form-data)
+RoutineController:
+- Admin CRUD: /api/v1/routine-slots
+- Instructor view: /api/v1/routine-slots/mine
+
+Session generation (Admin):
+- POST /api/v1/routine-slots/generate-sessions?from=YYYY-MM-DD&to=YYYY-MM-DD
+- Creates Sessions only if not already exist for that group + start time.
 
 ## Tests
-Integration tests:
-1) Admin can create student.
-2) Parent cannot list students (403).
-(Uploading file test optional if complicated; keep minimal.)
+- Instructor sees only their routine slots.
+- Generating sessions creates expected number without duplicates.
 
-## Verification
-- dotnet test
+## Migration
+- AddRoutineSlots
+
+---
+
+# Milestone 3.1 - Students CRUD + Photo Upload (Staff)
+(As previously planned; keep upload safe, serve static files, enforce content type & size.)
 
 ---
 
 # Milestone 3.2 - Guardians + Parent portal read APIs (Admin + Parent)
-
-## Goal
-Guardians (parents) and linking:
-- Admin can CRUD guardians and link them to students.
-- Parent can see ONLY their linked students (read-only endpoints).
-
-## Domain/Entities
-Guardian : IAcademyScoped
-- Id, AcademyId
-- string FullName (required max 200)
-- string? Phone (max 30)
-- string? Email (max 254)
-- Guid? UserId  // Identity user id (optional linkage)
-- DateTime CreatedAtUtc
-
-StudentGuardian : IAcademyScoped
-- Id, AcademyId
-- StudentId
-- GuardianId
-- string Relation (max 50) // Father/Mother/etc
-- DateTime CreatedAtUtc
-Unique index: (AcademyId, StudentId, GuardianId)
-
-## Infrastructure
-- DbSets + config + migration: AddGuardians
-- Ensure tenant filters apply.
-
-## Application
-DTOs + validators:
-- Create/Update Guardian
-- LinkGuardianToStudentRequest (relation)
-- LinkGuardianToUserRequest (userId)
-Services:
-- IGuardianService:
-  - CRUD guardians
-  - Link guardian <-> student
-  - Link guardian <-> userId
-- IParentPortalService:
-  - Task<IReadOnlyList<StudentDto>> GetMyChildrenAsync(ct)
-Rules:
-- Parent portal uses current userId -> Guardian.UserId -> StudentGuardian -> Student
-- Must never expose other students.
-
-## API
-GuardiansController (Admin):
-- CRUD: /api/v1/guardians
-- POST /api/v1/guardians/{guardianId}/link-user
-- POST /api/v1/students/{studentId}/guardians/{guardianId}  (link student<->guardian)
-
-ParentPortalController (Parent):
-- GET /api/v1/parent/me/children
-
-## Tests
-Integration tests:
-1) Admin creates guardian + student + links them + links guardian to a parent user (created via /auth/register).
-2) Parent calls /parent/me/children and sees exactly that student.
-3) Another parent sees empty list.
-
-## Verification
-- dotnet test
+(As previously planned; parent sees only linked children.)
 
 ---
 
 # Milestone 3.3 - Enrollments (Student <-> Group history)
-
-## Goal
-Track student membership in groups over time.
-
-## Domain/Entities
-Enrollment : IAcademyScoped
-- Id, AcademyId
-- StudentId
-- GroupId
-- DateOnly StartDate (required)
-- DateOnly? EndDate
-- DateTime CreatedAtUtc
-Rules:
-- Only one active enrollment per student per group at a time.
-- When moving student between groups, close previous enrollment (EndDate).
-
-## Infrastructure
-- DbSet<Enrollment>, config + migration: AddEnrollments
-- Indexes:
-  - (AcademyId, StudentId, GroupId, StartDate)
-  - Query-friendly indexes on StudentId and GroupId
-
-## Application
-DTOs + validators:
-- CreateEnrollmentRequest: StudentId, GroupId, StartDate
-- EndEnrollmentRequest: EndDate
-Services:
-- IEnrollmentService:
-  - EnrollAsync(req)
-  - EndAsync(enrollmentId, endDate)
-  - ListByStudentAsync(studentId)
-  - ListByGroupAsync(groupId)
-
-## API (Staff)
-- POST /api/v1/enrollments
-- POST /api/v1/enrollments/{id}/end
-- GET /api/v1/students/{id}/enrollments
-- GET /api/v1/groups/{id}/enrollments
-
-## Tests
-Integration tests:
-1) Enroll student to group works.
-2) Ending enrollment works.
-3) Tenant filter prevents cross-academy access.
-
-## Verification
-- dotnet test
+(As previously planned; record start/end.)
 
 ---
 
 # Milestone 4.1 - Attendance (bulk per session) + permissions
-
-## Goal
-Allow taking attendance per session in bulk.
-- Admin or the assigned instructor can take attendance for a session.
-
-## Domain/Entities
-AttendanceRecord : IAcademyScoped
-- Id, AcademyId
-- SessionId
-- StudentId
-- AttendanceStatus Status (enum: Present, Absent, Late, Excused)
-- string? Reason (max 200)
-- string? Note (max 500)
-- Guid MarkedByUserId
-- DateTime MarkedAtUtc
-Unique index: (AcademyId, SessionId, StudentId)
-
-## Infrastructure
-- DbSet + config + migration: AddAttendance
-
-## Application
-DTOs + validators:
-- AttendanceItemRequest: StudentId, Status, Reason?, Note?
-- SubmitAttendanceRequest: List<AttendanceItemRequest> Items (min 1)
-Service:
-- IAttendanceService:
-  - SubmitForSessionAsync(sessionId, request, ct)
-  - Permissions:
-    - If Admin -> allowed
-    - If Instructor -> allowed only if session.InstructorUserId == current userId
-  - Upsert behavior:
-    - If record exists -> update
-    - Else -> create
-
-## API
-SessionsAttendanceController (Staff):
-- POST /api/v1/sessions/{sessionId}/attendance
-- GET  /api/v1/sessions/{sessionId}/attendance
-
-## Tests
-Integration tests:
-1) Instructor can submit attendance only for own session.
-2) Instructor for another session gets 403.
-3) Admin can submit.
-
-## Verification
-- dotnet test
+(As previously planned; upsert + permission check.)
 
 ---
 
-# Milestone 4.2 - Attendance queries + basic reporting endpoints
+# Milestone 4.2 - Attendance queries + reporting endpoints
+(As previously planned; staff filters + parent restricted.)
+
+---
+
+# Milestone 4.3 - Homework/Assignments (Staff create, Parent read)
 
 ## Goal
-Provide standard queries (paged + filters) for attendance:
-- Admin/Staff can query by group/date/status.
-- Parent can query attendance for their children only (read-only).
+Add homework module without payments.
 
-## Application
-Add query endpoints/services:
-- IAttendanceQueryService:
-  - ListAsync(filters: groupId?, studentId?, from?, to?, status?, paged)
-  - ParentListForMyChildrenAsync(from?, to?, paged)
-Filtering rules:
-- Use tenant filters
-- Parent endpoint must restrict to children derived from guardian link (same logic as parent portal)
+## Domain/Entities
+Assignment : IAcademyScoped
+- Id, AcademyId
+- GroupId
+- Title (required max 200)
+- Description? (max 2000)
+- DueAtUtc? (optional)
+- CreatedByUserId
+- CreatedAtUtc
+
+AssignmentAttachment : IAcademyScoped
+- Id, AcademyId
+- AssignmentId
+- FileUrl (max 500)
+- FileName (max 255)
+- ContentType (max 100)
+- CreatedAtUtc
+
+AssignmentTarget : IAcademyScoped
+- Id, AcademyId
+- AssignmentId
+- StudentId (optional)  // null means whole group
+- CreatedAtUtc
 
 ## API
-AttendanceController:
-- GET /api/v1/attendance?groupId=&studentId=&from=&to=&status=&page=&pageSize=
-  - [Authorize(Policy=Policies.Staff)]
-ParentAttendanceController:
-- GET /api/v1/parent/me/attendance?from=&to=&page=&pageSize=
-  - [Authorize(Policy=Policies.Parent)]
+Staff:
+- POST /api/v1/assignments (create for group; optionally target students)
+- POST /api/v1/assignments/{id}/attachments (upload)
+- GET  /api/v1/assignments?groupId=&from=&to=&page=&pageSize=
+Parent:
+- GET /api/v1/parent/me/assignments?from=&to=&page=&pageSize=
+Rules:
+- Parent list must include only assignments for children’s groups OR explicit student targets.
+
+## Migration
+- AddAssignments
 
 ## Tests
-Integration tests:
-1) Staff attendance list returns expected shape.
-2) Parent attendance endpoint returns only their child's records.
+- Staff create assignment, parent sees it only for their child.
+
+---
+
+# Milestone 4.4 - Communication/Announcements + In-app notifications
+
+## Goal
+Add announcements and notifications (no SMS/WhatsApp integration yet).
+
+## Domain/Entities
+Announcement : IAcademyScoped
+- Id, AcademyId
+- Title (required max 200)
+- Body (required max 5000)
+- Audience enum: AllParents, AllStaff, GroupParents, GroupStaff
+- GroupId? (when targeting group)
+- PublishedAtUtc
+- CreatedByUserId
+- CreatedAtUtc
+
+Notification already exists:
+- Ensure notifications are created for targeted users when an announcement is published.
+
+## API
+Staff:
+- POST /api/v1/announcements
+- GET  /api/v1/announcements?page=&pageSize=
+Parent:
+- GET /api/v1/parent/me/announcements?page=&pageSize=
+Notifications:
+- GET /api/v1/notifications
+- POST /api/v1/notifications/{id}/read
+
+## Tests
+- Publishing an announcement creates notifications for target users.
+- Parent sees only parent-targeted announcements.
+
+## Migration
+- AddAnnouncements
+
+---
+
+# Milestone 4.9 - Codebase hygiene
+
+## Goal
+Keep project reliable and clean.
+
+## Actions
+- Remove DemoController endpoints if they are no longer required by tests.
+  - If removing: also remove demo validators/tests and update swagger tests accordingly.
+- Ensure all file names and namespaces follow the folder structure.
+- Delete unused files after reference search.
+- Run dotnet format (if configured) or at least ensure no analyzer warnings.
 
 ## Verification
 - dotnet test
@@ -491,9 +342,5 @@ Integration tests:
 ---
 
 # Stop point
-After Milestone 4.2 completes, stop. Next plan file update will cover:
-- Evaluations (Epic 5)
-- Behavior (Epic 6)
-- Tests/Exams (Epic 7)
-- CMS (Epic 8)
-- Notifications/Dashboards (Epic 9–10)
+After Milestone 4.9 completes, stop.
+Next plan will cover: Evaluations, Behavior, Exams/Tests, CMS (home/landing dashboard).
