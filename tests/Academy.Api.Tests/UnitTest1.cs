@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
@@ -776,6 +777,75 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task RoutineSlots_InstructorSeesOnlyAssigned()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var programId = await CreateProgramAsync(client, "Program R1");
+        var courseId = await CreateCourseAsync(client, programId, "Course R1");
+        var levelId = await CreateLevelAsync(client, courseId, "Level R1", 0);
+
+        var (instructorOneId, instructorOneToken) = await CreateInstructorAsync(client, "routine_instructor1@local.test");
+        var (instructorTwoId, _) = await CreateInstructorAsync(client, "routine_instructor2@local.test");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var groupOneId = await CreateGroupAsync(client, programId, courseId, levelId, "Group R1", instructorOneId);
+        var groupTwoId = await CreateGroupAsync(client, programId, courseId, levelId, "Group R2", instructorTwoId);
+
+        await CreateRoutineSlotAsync(client, groupOneId, instructorOneId, DayOfWeek.Monday, new TimeOnly(8, 0), 60);
+        await CreateRoutineSlotAsync(client, groupTwoId, instructorTwoId, DayOfWeek.Tuesday, new TimeOnly(9, 0), 60);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", instructorOneToken);
+        var response = await client.GetAsync("/api/v1/routine-slots/mine?page=1&pageSize=10");
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, body);
+
+        using var document = JsonDocument.Parse(body);
+        var items = document.RootElement.GetProperty("items").EnumerateArray().ToArray();
+        Assert.Single(items);
+        Assert.Equal(instructorOneId, items[0].GetProperty("instructorUserId").GetGuid());
+    }
+
+    [Fact]
+    public async Task RoutineSlots_GenerateSessions_CreatesWithoutDuplicates()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var programId = await CreateProgramAsync(client, "Program R2");
+        var courseId = await CreateCourseAsync(client, programId, "Course R2");
+        var levelId = await CreateLevelAsync(client, courseId, "Level R2", 0);
+
+        var (instructorId, _) = await CreateInstructorAsync(client, "routine_instructor3@local.test");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var groupId = await CreateGroupAsync(client, programId, courseId, levelId, "Group R3", instructorId);
+
+        await CreateRoutineSlotAsync(client, groupId, instructorId, DayOfWeek.Monday, new TimeOnly(10, 0), 60);
+
+        var from = NextDate(DateOnly.FromDateTime(DateTime.UtcNow), DayOfWeek.Monday);
+        var to = from.AddDays(6);
+
+        var firstResponse = await client.PostAsync(
+            $"/api/v1/routine-slots/generate-sessions?from={from.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}&to={to.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}",
+            null);
+        firstResponse.EnsureSuccessStatusCode();
+
+        using var firstDocument = JsonDocument.Parse(await firstResponse.Content.ReadAsStringAsync());
+        Assert.Equal(1, firstDocument.RootElement.GetProperty("created").GetInt32());
+
+        var secondResponse = await client.PostAsync(
+            $"/api/v1/routine-slots/generate-sessions?from={from.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}&to={to.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}",
+            null);
+        secondResponse.EnsureSuccessStatusCode();
+
+        using var secondDocument = JsonDocument.Parse(await secondResponse.Content.ReadAsStringAsync());
+        Assert.Equal(0, secondDocument.RootElement.GetProperty("created").GetInt32());
+    }
+
+    [Fact]
     public async Task Sessions_Create_Respects_TenantScope()
     {
         var client = _factory.CreateClient();
@@ -1329,6 +1399,28 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         return document.RootElement.GetProperty("id").GetGuid();
     }
 
+    private static async Task<Guid> CreateRoutineSlotAsync(
+        HttpClient client,
+        Guid groupId,
+        Guid instructorUserId,
+        DayOfWeek dayOfWeek,
+        TimeOnly startTime,
+        int durationMinutes)
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/routine-slots", new
+        {
+            groupId,
+            dayOfWeek = (int)dayOfWeek,
+            startTime = startTime.ToString("HH:mm:ss", CultureInfo.InvariantCulture),
+            durationMinutes,
+            instructorUserId
+        });
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("id").GetGuid();
+    }
+
     private static async Task<Guid> CreateSessionAsync(
         HttpClient client,
         Guid groupId,
@@ -1413,6 +1505,17 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private static DateOnly NextDate(DateOnly start, DayOfWeek dayOfWeek)
+    {
+        var date = start;
+        while (date.DayOfWeek != dayOfWeek)
+        {
+            date = date.AddDays(1);
+        }
+
+        return date;
     }
 
     private static void ConfigureSqliteForTests(IServiceCollection services, string dbPath)

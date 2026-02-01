@@ -19,6 +19,7 @@ public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
             .SetBasePath(basePath)
             .AddJsonFile("appsettings.json", optional: true)
             .AddJsonFile("appsettings.Development.json", optional: true)
+            .AddEnvironmentVariables()
             .Build();
 
         var provider = configuration["Database:Provider"];

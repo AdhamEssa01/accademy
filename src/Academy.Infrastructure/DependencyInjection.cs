@@ -68,6 +68,7 @@ public static class DependencyInjection
         services.AddScoped<IProgramCatalogService, ProgramCatalogService>();
         services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<ISessionService, SessionService>();
+        services.AddScoped<IRoutineSlotService, RoutineSlotService>();
         services.AddScoped<IStudentService, StudentService>();
         services.AddScoped<IStudentPhotoService, StudentPhotoService>();
         services.AddScoped<IGuardianService, GuardianService>();

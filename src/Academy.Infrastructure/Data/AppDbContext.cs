@@ -37,6 +37,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<Session> Sessions => Set<Session>();
 
+    public DbSet<RoutineSlot> RoutineSlots => Set<RoutineSlot>();
+
     public DbSet<Student> Students => Set<Student>();
 
     public DbSet<Guardian> Guardians => Set<Guardian>();
@@ -226,6 +228,34 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
             entity.HasOne<AppUser>()
                 .WithMany()
                 .HasForeignKey(s => s.InstructorUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<RoutineSlot>(entity =>
+        {
+            entity.Property(r => r.DayOfWeek)
+                .IsRequired();
+
+            entity.Property(r => r.StartTime)
+                .IsRequired();
+
+            entity.Property(r => r.DurationMinutes)
+                .IsRequired();
+
+            entity.Property(r => r.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(r => new { r.AcademyId, r.GroupId, r.DayOfWeek, r.StartTime })
+                .IsUnique();
+
+            entity.HasOne<Group>()
+                .WithMany()
+                .HasForeignKey(r => r.GroupId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(r => r.InstructorUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
