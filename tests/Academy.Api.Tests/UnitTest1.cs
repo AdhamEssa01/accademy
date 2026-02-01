@@ -60,6 +60,7 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
             });
             builder.ConfigureTestServices(services =>
             {
+                ConfigureSqliteForTests(services, _dbPath);
                 services.RemoveAll<IGoogleIdTokenValidator>();
                 services.AddSingleton<FakeGoogleIdTokenValidator>();
                 services.AddSingleton<IGoogleIdTokenValidator>(sp => sp.GetRequiredService<FakeGoogleIdTokenValidator>());
@@ -1209,6 +1210,7 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
             });
             builder.ConfigureTestServices(services =>
             {
+                ConfigureSqliteForTests(services, dbPath);
                 services.RemoveAll<IGoogleIdTokenValidator>();
                 services.AddSingleton<FakeGoogleIdTokenValidator>();
                 services.AddSingleton<IGoogleIdTokenValidator>(sp => sp.GetRequiredService<FakeGoogleIdTokenValidator>());
@@ -1411,6 +1413,17 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private static void ConfigureSqliteForTests(IServiceCollection services, string dbPath)
+    {
+        services.RemoveAll<DbContextOptions<AppDbContext>>();
+        services.RemoveAll<AppDbContext>();
+        services.AddDbContext<AppDbContext>(options =>
+        {
+            var connectionString = $"Data Source={dbPath};Pooling=False";
+            options.UseSqlite(connectionString, b => b.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
+        });
     }
 
     private readonly record struct UserSnapshot(Guid Id, string Email);

@@ -37,7 +37,7 @@ Do NOT implement any payment-related domain models, endpoints, migrations, or UI
 - [x] Milestone 1.5 - Security hardening baseline (rate limit, headers, CORS, secrets)
 
 ### Core academy structure
-- [ ] Milestone 2.1 - Academy & Branch management (Admin)
+- [x] Milestone 2.1 - Academy & Branch management (Admin)
 - [ ] Milestone 2.2 - Programs/Courses/Levels CRUD (Admin)
 - [ ] Milestone 2.3 - Groups & Sessions (Admin + Instructor views)
 - [ ] Milestone 2.4 - Weekly Timetable (Routine) derived to Sessions (Admin + Instructor view)
