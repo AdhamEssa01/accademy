@@ -45,7 +45,7 @@
 - [x] Milestone 8.2 - Achievements CRUD (Admin) + Public read endpoints
 
 ### Dashboards
-- [ ] Milestone 10.1 - Admin dashboard endpoints (KPIs: attendance, evals, behavior, exams)
+- [x] Milestone 10.1 - Admin dashboard endpoints (KPIs: attendance, evals, behavior, exams)
 - [ ] Milestone 10.2 - Instructor dashboard endpoints (today sessions, pending grading, recent evals)
 - [ ] Milestone 10.3 - Parent dashboard endpoints (children summary, attendance, homework, announcements, results)
 

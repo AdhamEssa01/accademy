@@ -2341,6 +2341,23 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AdminDashboard_ReturnsShape()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var response = await client.GetAsync("/api/v1/dashboards/admin");
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.True(document.RootElement.TryGetProperty("attendanceToday", out _));
+        Assert.True(document.RootElement.TryGetProperty("riskyStudents", out _));
+        Assert.True(document.RootElement.TryGetProperty("pendingManualGradingCount", out _));
+        Assert.True(document.RootElement.TryGetProperty("examAttemptsLast7Days", out _));
+    }
+
+    [Fact]
     public async Task ExamResults_ParentSeesOnlyChildren()
     {
         var client = _factory.CreateClient();
