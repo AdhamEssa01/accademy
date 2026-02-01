@@ -2264,6 +2264,54 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Cms_PublicOnlyReturnsPublishedVisible()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var slug = $"home-{Guid.NewGuid():N}";
+
+        var createPage = await client.PutAsJsonAsync($"/api/v1/cms/pages/{slug}", new
+        {
+            title = "Home",
+            publishedAtUtc = (DateTime?)null
+        });
+        createPage.EnsureSuccessStatusCode();
+
+        var updateSections = await client.PutAsJsonAsync($"/api/v1/cms/pages/{slug}/sections", new
+        {
+            sections = new[]
+            {
+                new { type = "hero", jsonContent = "{\"title\":\"Welcome\"}", sortOrder = 0, isVisible = true },
+                new { type = "hidden", jsonContent = "{\"title\":\"Hidden\"}", sortOrder = 1, isVisible = false }
+            }
+        });
+        updateSections.EnsureSuccessStatusCode();
+
+        client.DefaultRequestHeaders.Authorization = null;
+        var publicUnpublished = await client.GetAsync($"/api/v1/public/cms/pages/{slug}");
+        Assert.Equal(HttpStatusCode.NotFound, publicUnpublished.StatusCode);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var publishPage = await client.PutAsJsonAsync($"/api/v1/cms/pages/{slug}", new
+        {
+            title = "Home",
+            publishedAtUtc = DateTime.UtcNow
+        });
+        publishPage.EnsureSuccessStatusCode();
+
+        client.DefaultRequestHeaders.Authorization = null;
+        var publicPage = await client.GetAsync($"/api/v1/public/cms/pages/{slug}");
+        publicPage.EnsureSuccessStatusCode();
+
+        using var publicDoc = JsonDocument.Parse(await publicPage.Content.ReadAsStringAsync());
+        var sections = publicDoc.RootElement.GetProperty("sections").EnumerateArray().ToArray();
+        Assert.Single(sections);
+        Assert.Equal("hero", sections[0].GetProperty("type").GetString());
+    }
+
+    [Fact]
     public async Task ExamResults_ParentSeesOnlyChildren()
     {
         var client = _factory.CreateClient();

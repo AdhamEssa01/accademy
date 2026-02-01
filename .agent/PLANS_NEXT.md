@@ -41,7 +41,7 @@
 - [x] Milestone 7.7 - Exam analytics endpoints (Admin/Staff)
 
 ### CMS / Website content
-- [ ] Milestone 8.1 - CMS Pages & Sections (Admin edit/publish) + Public read endpoints
+- [x] Milestone 8.1 - CMS Pages & Sections (Admin edit/publish) + Public read endpoints
 - [ ] Milestone 8.2 - Achievements CRUD (Admin) + Public read endpoints
 
 ### Dashboards

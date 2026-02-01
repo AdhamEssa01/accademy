@@ -83,6 +83,10 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<AttemptAnswer> AttemptAnswers => Set<AttemptAnswer>();
 
+    public DbSet<CmsPage> CmsPages => Set<CmsPage>();
+
+    public DbSet<CmsSection> CmsSections => Set<CmsSection>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -621,6 +625,45 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
                 .WithMany()
                 .HasForeignKey(a => a.QuestionId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CmsPage>(entity =>
+        {
+            entity.Property(p => p.Slug)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(p => p.Title)
+                .HasMaxLength(200);
+
+            entity.Property(p => p.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(p => new { p.AcademyId, p.Slug })
+                .IsUnique();
+        });
+
+        builder.Entity<CmsSection>(entity =>
+        {
+            entity.Property(s => s.Type)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(s => s.JsonContent)
+                .IsRequired();
+
+            entity.Property(s => s.SortOrder)
+                .IsRequired();
+
+            entity.Property(s => s.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(s => new { s.AcademyId, s.PageId, s.SortOrder });
+
+            entity.HasOne<CmsPage>()
+                .WithMany()
+                .HasForeignKey(s => s.PageId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<Assignment>(entity =>
