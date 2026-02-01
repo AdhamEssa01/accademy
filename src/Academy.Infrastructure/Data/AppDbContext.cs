@@ -79,6 +79,10 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<ExamAssignment> ExamAssignments => Set<ExamAssignment>();
 
+    public DbSet<ExamAttempt> ExamAttempts => Set<ExamAttempt>();
+
+    public DbSet<AttemptAnswer> AttemptAnswers => Set<AttemptAnswer>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -564,6 +568,58 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
             entity.HasOne<Student>()
                 .WithMany()
                 .HasForeignKey(e => e.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ExamAttempt>(entity =>
+        {
+            entity.Property(a => a.Status)
+                .IsRequired();
+
+            entity.Property(a => a.TotalScore)
+                .HasColumnType("decimal(7,2)");
+
+            entity.Property(a => a.StartedAtUtc)
+                .IsRequired();
+
+            entity.Property(a => a.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(a => new { a.AcademyId, a.AssignmentId, a.StudentId });
+
+            entity.HasOne<ExamAssignment>()
+                .WithMany()
+                .HasForeignKey(a => a.AssignmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Student>()
+                .WithMany()
+                .HasForeignKey(a => a.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<AttemptAnswer>(entity =>
+        {
+            entity.Property(a => a.AnswerJson)
+                .IsRequired();
+
+            entity.Property(a => a.Feedback)
+                .HasMaxLength(500);
+
+            entity.Property(a => a.Score)
+                .HasColumnType("decimal(7,2)");
+
+            entity.HasIndex(a => new { a.AcademyId, a.AttemptId, a.QuestionId })
+                .IsUnique();
+
+            entity.HasOne<ExamAttempt>()
+                .WithMany()
+                .HasForeignKey(a => a.AttemptId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Question>()
+                .WithMany()
+                .HasForeignKey(a => a.QuestionId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

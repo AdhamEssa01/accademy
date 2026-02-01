@@ -1817,6 +1817,169 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         Assert.Equal(2, items.Length);
     }
 
+    [Fact]
+    public async Task ExamAttempts_StartSaveSubmit_Works()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var questionId = await CreateQuestionAsync(client, "Attempt Question");
+
+        var examResponse = await client.PostAsJsonAsync("/api/v1/exams", new
+        {
+            title = "Attempt Exam",
+            type = 1,
+            durationMinutes = 30,
+            shuffleQuestions = false,
+            shuffleOptions = false,
+            showResultsAfterSubmit = false
+        });
+        examResponse.EnsureSuccessStatusCode();
+
+        using var examDocument = JsonDocument.Parse(await examResponse.Content.ReadAsStringAsync());
+        var examId = examDocument.RootElement.GetProperty("id").GetGuid();
+
+        var updateQuestions = await client.PutAsJsonAsync($"/api/v1/exams/{examId}/questions", new
+        {
+            questions = new[]
+            {
+                new { questionId, points = 5, sortOrder = 0 }
+            }
+        });
+        updateQuestions.EnsureSuccessStatusCode();
+
+        var studentId = await CreateStudentAsync(client, "Attempt Student");
+
+        var openAtUtc = DateTime.UtcNow.AddMinutes(-5);
+        var closeAtUtc = DateTime.UtcNow.AddDays(1);
+
+        var assignResponse = await client.PostAsJsonAsync($"/api/v1/exams/{examId}/assignments", new
+        {
+            studentId,
+            openAtUtc,
+            closeAtUtc,
+            attemptsAllowed = 1
+        });
+        assignResponse.EnsureSuccessStatusCode();
+
+        using var assignDocument = JsonDocument.Parse(await assignResponse.Content.ReadAsStringAsync());
+        var assignmentId = assignDocument.RootElement.GetProperty("id").GetGuid();
+
+        var startResponse = await client.PostAsJsonAsync($"/api/v1/assignments/{assignmentId}/attempts/start", new
+        {
+            studentId
+        });
+        startResponse.EnsureSuccessStatusCode();
+
+        using var startDocument = JsonDocument.Parse(await startResponse.Content.ReadAsStringAsync());
+        var attemptId = startDocument.RootElement.GetProperty("id").GetGuid();
+
+        var saveResponse = await client.PutAsJsonAsync($"/api/v1/attempts/{attemptId}/answers", new
+        {
+            answers = new[]
+            {
+                new { questionId, answerJson = "{\"answer\":\"4\"}" }
+            }
+        });
+        Assert.Equal(HttpStatusCode.NoContent, saveResponse.StatusCode);
+
+        var submitResponse = await client.PostAsync($"/api/v1/attempts/{attemptId}/submit", null);
+        submitResponse.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task ExamResults_ParentSeesOnlyChildren()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var questionId = await CreateQuestionAsync(client, "Result Question");
+
+        var examResponse = await client.PostAsJsonAsync("/api/v1/exams", new
+        {
+            title = "Result Exam",
+            type = 1,
+            durationMinutes = 30,
+            shuffleQuestions = false,
+            shuffleOptions = false,
+            showResultsAfterSubmit = false
+        });
+        examResponse.EnsureSuccessStatusCode();
+
+        using var examDocument = JsonDocument.Parse(await examResponse.Content.ReadAsStringAsync());
+        var examId = examDocument.RootElement.GetProperty("id").GetGuid();
+
+        var updateQuestions = await client.PutAsJsonAsync($"/api/v1/exams/{examId}/questions", new
+        {
+            questions = new[]
+            {
+                new { questionId, points = 5, sortOrder = 0 }
+            }
+        });
+        updateQuestions.EnsureSuccessStatusCode();
+
+        var studentId = await CreateStudentAsync(client, "Result Student");
+        var otherStudentId = await CreateStudentAsync(client, "Result Other");
+
+        var openAtUtc = DateTime.UtcNow.AddMinutes(-5);
+        var closeAtUtc = DateTime.UtcNow.AddDays(1);
+
+        var assignResponse = await client.PostAsJsonAsync($"/api/v1/exams/{examId}/assignments", new
+        {
+            studentId,
+            openAtUtc,
+            closeAtUtc,
+            attemptsAllowed = 1
+        });
+        assignResponse.EnsureSuccessStatusCode();
+
+        using var assignDocument = JsonDocument.Parse(await assignResponse.Content.ReadAsStringAsync());
+        var assignmentId = assignDocument.RootElement.GetProperty("id").GetGuid();
+
+        await StartAndSubmitAttemptAsync(client, assignmentId, studentId, questionId);
+
+        var assignOtherResponse = await client.PostAsJsonAsync($"/api/v1/exams/{examId}/assignments", new
+        {
+            studentId = otherStudentId,
+            openAtUtc,
+            closeAtUtc,
+            attemptsAllowed = 1
+        });
+        assignOtherResponse.EnsureSuccessStatusCode();
+
+        using var assignOtherDocument = JsonDocument.Parse(await assignOtherResponse.Content.ReadAsStringAsync());
+        var otherAssignmentId = assignOtherDocument.RootElement.GetProperty("id").GetGuid();
+
+        await StartAndSubmitAttemptAsync(client, otherAssignmentId, otherStudentId, questionId);
+
+        var (parentToken, parentUserId) = await RegisterWithUserAsync(client, $"parent_res_{Guid.NewGuid():N}@local.test", "Parent Results");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var guardianId = await CreateGuardianAsync(client, "Results Guardian");
+
+        var linkUserResponse = await client.PostAsJsonAsync($"/api/v1/guardians/{guardianId}/link-user", new
+        {
+            userId = parentUserId
+        });
+        linkUserResponse.EnsureSuccessStatusCode();
+
+        var linkStudentResponse = await client.PostAsJsonAsync(
+            $"/api/v1/students/{studentId}/guardians/{guardianId}",
+            new { relation = "Parent" });
+        linkStudentResponse.EnsureSuccessStatusCode();
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", parentToken);
+        var response = await client.GetAsync("/api/v1/parent/me/exam-results?page=1&pageSize=10");
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var items = document.RootElement.GetProperty("items").EnumerateArray().ToArray();
+        Assert.Single(items);
+        Assert.Equal(studentId, items[0].GetProperty("studentId").GetGuid());
+    }
+
     private async Task<(string AccessToken, string RefreshToken, UserSnapshot User)> LoginAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
@@ -2193,6 +2356,34 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
 
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return document.RootElement.GetProperty("id").GetGuid();
+    }
+
+    private static async Task StartAndSubmitAttemptAsync(
+        HttpClient client,
+        Guid assignmentId,
+        Guid studentId,
+        Guid questionId)
+    {
+        var startResponse = await client.PostAsJsonAsync($"/api/v1/assignments/{assignmentId}/attempts/start", new
+        {
+            studentId
+        });
+        startResponse.EnsureSuccessStatusCode();
+
+        using var startDocument = JsonDocument.Parse(await startResponse.Content.ReadAsStringAsync());
+        var attemptId = startDocument.RootElement.GetProperty("id").GetGuid();
+
+        var saveResponse = await client.PutAsJsonAsync($"/api/v1/attempts/{attemptId}/answers", new
+        {
+            answers = new[]
+            {
+                new { questionId, answerJson = "{\"answer\":\"4\"}" }
+            }
+        });
+        saveResponse.EnsureSuccessStatusCode();
+
+        var submitResponse = await client.PostAsync($"/api/v1/attempts/{attemptId}/submit", null);
+        submitResponse.EnsureSuccessStatusCode();
     }
 
     private static string CreateTokenWithoutAcademyClaim()

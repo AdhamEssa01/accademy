@@ -35,7 +35,7 @@
 - [x] Milestone 7.1 - Question bank (CRUD) (Staff)
 - [x] Milestone 7.2 - Exam builder (create exams + attach questions) (Staff)
 - [x] Milestone 7.3 - Exam assignment (group/student, open/close, attempts) (Staff)
-- [ ] Milestone 7.4 - Attempts (start/save/submit) (Student optional) + Parent read results
+- [x] Milestone 7.4 - Attempts (start/save/submit) (Student optional) + Parent read results
 - [ ] Milestone 7.5 - Auto grading + scoring (MCQ/TF/Fill) (System)
 - [ ] Milestone 7.6 - Manual grading (essay/file) (Instructor/Staff)
 - [ ] Milestone 7.7 - Exam analytics endpoints (Admin/Staff)
