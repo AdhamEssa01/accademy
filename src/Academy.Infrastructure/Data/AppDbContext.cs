@@ -63,6 +63,10 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<RubricCriterion> RubricCriteria => Set<RubricCriterion>();
 
+    public DbSet<Evaluation> Evaluations => Set<Evaluation>();
+
+    public DbSet<EvaluationItem> EvaluationItems => Set<EvaluationItem>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -555,6 +559,60 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
                 .WithMany()
                 .HasForeignKey(c => c.TemplateId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<Evaluation>(entity =>
+        {
+            entity.Property(e => e.Notes)
+                .HasMaxLength(1000);
+
+            entity.Property(e => e.TotalScore)
+                .HasColumnType("decimal(7,2)");
+
+            entity.Property(e => e.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasOne<Student>()
+                .WithMany()
+                .HasForeignKey(e => e.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<EvaluationTemplate>()
+                .WithMany()
+                .HasForeignKey(e => e.TemplateId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Session>()
+                .WithMany()
+                .HasForeignKey(e => e.SessionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(e => e.EvaluatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<EvaluationItem>(entity =>
+        {
+            entity.Property(i => i.Score)
+                .HasColumnType("decimal(5,2)");
+
+            entity.Property(i => i.Comment)
+                .HasMaxLength(500);
+
+            entity.HasIndex(i => new { i.AcademyId, i.EvaluationId, i.CriterionId })
+                .IsUnique();
+
+            entity.HasOne<Evaluation>()
+                .WithMany()
+                .HasForeignKey(i => i.EvaluationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<RubricCriterion>()
+                .WithMany()
+                .HasForeignKey(i => i.CriterionId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.ApplyAcademyScopedQueryFilters(() => _currentAcademyId);

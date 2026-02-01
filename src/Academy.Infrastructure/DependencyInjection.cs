@@ -63,6 +63,7 @@ public static class DependencyInjection
         services.AddScoped<IAnnouncementService, AnnouncementService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IEvaluationTemplateService, EvaluationTemplateService>();
+        services.AddScoped<IEvaluationService, EvaluationService>();
         services.AddSingleton<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 
         return services;

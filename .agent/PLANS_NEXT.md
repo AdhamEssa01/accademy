@@ -27,7 +27,7 @@
 
 ### Learning modules
 - [x] Milestone 5.1 - Evaluation templates (Rubrics) CRUD (Admin)
-- [ ] Milestone 5.2 - Student evaluations CRUD (Instructor/Staff) + Parent read
+- [x] Milestone 5.2 - Student evaluations CRUD (Instructor/Staff) + Parent read
 
 - [ ] Milestone 6.1 - Behavior events (points) CRUD (Staff) + Parent read
 - [ ] Milestone 6.2 - Behavior summaries & risk flags (Admin/Staff dashboards)

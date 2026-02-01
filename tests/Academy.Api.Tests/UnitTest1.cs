@@ -1432,6 +1432,104 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Evaluations_InstructorCanCreate_ForOwnStudent()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var programId = await CreateProgramAsync(client, $"Program_{Guid.NewGuid():N}");
+        var courseId = await CreateCourseAsync(client, programId, $"Course_{Guid.NewGuid():N}");
+        var levelId = await CreateLevelAsync(client, courseId, $"Level_{Guid.NewGuid():N}", 1);
+
+        var (instructorUserId, instructorToken) = await CreateInstructorAsync(
+            client,
+            $"instructor_{Guid.NewGuid():N}@local.test");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var groupId = await CreateGroupAsync(client, programId, courseId, levelId, "Eval Group", instructorUserId);
+        var studentId = await CreateStudentAsync(client, "Eval Student");
+        await CreateEnrollmentAsync(client, studentId, groupId, DateOnly.FromDateTime(DateTime.UtcNow.Date));
+
+        var templateId = await CreateEvaluationTemplateAsync(client, "Eval Template");
+        var criterionId = await CreateRubricCriterionAsync(client, templateId, "Participation", 10, 1.0m, 0);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", instructorToken);
+        var response = await client.PostAsJsonAsync("/api/v1/evaluations", new
+        {
+            studentId,
+            templateId,
+            items = new[]
+            {
+                new { criterionId, score = 8, comment = "Good" }
+            }
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var (_, otherInstructorToken) = await CreateInstructorAsync(
+            client,
+            $"other_instructor_{Guid.NewGuid():N}@local.test");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", otherInstructorToken);
+        var forbidden = await client.PostAsJsonAsync("/api/v1/evaluations", new
+        {
+            studentId,
+            templateId,
+            items = new[]
+            {
+                new { criterionId, score = 7 }
+            }
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+    }
+
+    [Fact]
+    public async Task Evaluations_ParentSeesOnlyChildren()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var templateId = await CreateEvaluationTemplateAsync(client, "Parent Template");
+        var criterionId = await CreateRubricCriterionAsync(client, templateId, "Effort", 10, 1.0m, 0);
+
+        var studentId = await CreateStudentAsync(client, "Child One");
+        var otherStudentId = await CreateStudentAsync(client, "Child Two");
+
+        await CreateEvaluationAsync(client, studentId, templateId, criterionId, 9);
+        await CreateEvaluationAsync(client, otherStudentId, templateId, criterionId, 7);
+
+        var parentEmail = $"parent_eval_{Guid.NewGuid():N}@local.test";
+        var (parentToken, parentUserId) = await RegisterWithUserAsync(client, parentEmail, "Parent Eval");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var guardianId = await CreateGuardianAsync(client, "Parent Eval");
+
+        var linkUserResponse = await client.PostAsJsonAsync($"/api/v1/guardians/{guardianId}/link-user", new
+        {
+            userId = parentUserId
+        });
+        linkUserResponse.EnsureSuccessStatusCode();
+
+        var linkStudentResponse = await client.PostAsJsonAsync(
+            $"/api/v1/students/{studentId}/guardians/{guardianId}",
+            new { relation = "Parent" });
+        linkStudentResponse.EnsureSuccessStatusCode();
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", parentToken);
+        var response = await client.GetAsync("/api/v1/parent/me/evaluations?page=1&pageSize=10");
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var items = document.RootElement.GetProperty("items").EnumerateArray().ToArray();
+
+        Assert.Single(items);
+        Assert.Equal(studentId, items[0].GetProperty("studentId").GetGuid());
+    }
+
     private async Task<(string AccessToken, string RefreshToken, UserSnapshot User)> LoginAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
@@ -1742,6 +1840,28 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
             maxScore,
             weight,
             sortOrder
+        });
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("id").GetGuid();
+    }
+
+    private static async Task<Guid> CreateEvaluationAsync(
+        HttpClient client,
+        Guid studentId,
+        Guid templateId,
+        Guid criterionId,
+        decimal score)
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/evaluations", new
+        {
+            studentId,
+            templateId,
+            items = new[]
+            {
+                new { criterionId, score }
+            }
         });
         response.EnsureSuccessStatusCode();
 
