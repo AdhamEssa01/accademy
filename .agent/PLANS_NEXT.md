@@ -38,7 +38,7 @@
 - [x] Milestone 7.4 - Attempts (start/save/submit) (Student optional) + Parent read results
 - [x] Milestone 7.5 - Auto grading + scoring (MCQ/TF/Fill) (System)
 - [x] Milestone 7.6 - Manual grading (essay/file) (Instructor/Staff)
-- [ ] Milestone 7.7 - Exam analytics endpoints (Admin/Staff)
+- [x] Milestone 7.7 - Exam analytics endpoints (Admin/Staff)
 
 ### CMS / Website content
 - [ ] Milestone 8.1 - CMS Pages & Sections (Admin edit/publish) + Public read endpoints

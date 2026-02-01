@@ -75,6 +75,7 @@ public static class DependencyInjection
         services.AddScoped<IExamAttemptService, ExamAttemptService>();
         services.AddScoped<IExamGradingService, ExamGradingService>();
         services.AddScoped<IExamManualGradingService, ExamManualGradingService>();
+        services.AddScoped<IExamAnalyticsService, ExamAnalyticsService>();
         services.AddSingleton<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 
         return services;

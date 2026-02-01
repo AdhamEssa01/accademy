@@ -2206,6 +2206,64 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ExamStats_ReturnsShape()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var questionId = await CreateQuestionAsync(client, "Stats Question");
+
+        var examResponse = await client.PostAsJsonAsync("/api/v1/exams", new
+        {
+            title = "Stats Exam",
+            type = 1,
+            durationMinutes = 30,
+            shuffleQuestions = false,
+            shuffleOptions = false,
+            showResultsAfterSubmit = false
+        });
+        examResponse.EnsureSuccessStatusCode();
+
+        using var examDocument = JsonDocument.Parse(await examResponse.Content.ReadAsStringAsync());
+        var examId = examDocument.RootElement.GetProperty("id").GetGuid();
+
+        var updateQuestions = await client.PutAsJsonAsync($"/api/v1/exams/{examId}/questions", new
+        {
+            questions = new[]
+            {
+                new { questionId, points = 5, sortOrder = 0 }
+            }
+        });
+        updateQuestions.EnsureSuccessStatusCode();
+
+        var studentId = await CreateStudentAsync(client, "Stats Student");
+
+        var assignResponse = await client.PostAsJsonAsync($"/api/v1/exams/{examId}/assignments", new
+        {
+            studentId,
+            openAtUtc = DateTime.UtcNow.AddMinutes(-1),
+            closeAtUtc = DateTime.UtcNow.AddDays(1),
+            attemptsAllowed = 1
+        });
+        assignResponse.EnsureSuccessStatusCode();
+
+        using var assignDocument = JsonDocument.Parse(await assignResponse.Content.ReadAsStringAsync());
+        var assignmentId = assignDocument.RootElement.GetProperty("id").GetGuid();
+
+        await StartAndSubmitAttemptAsync(client, assignmentId, studentId, questionId);
+
+        var statsResponse = await client.GetAsync($"/api/v1/exams/{examId}/stats");
+        statsResponse.EnsureSuccessStatusCode();
+
+        using var statsDoc = JsonDocument.Parse(await statsResponse.Content.ReadAsStringAsync());
+        Assert.True(statsDoc.RootElement.TryGetProperty("attemptsCount", out _));
+        Assert.True(statsDoc.RootElement.TryGetProperty("averageScore", out _));
+        Assert.True(statsDoc.RootElement.TryGetProperty("scoreDistribution", out _));
+        Assert.True(statsDoc.RootElement.TryGetProperty("mostMissedQuestions", out _));
+    }
+
+    [Fact]
     public async Task ExamResults_ParentSeesOnlyChildren()
     {
         var client = _factory.CreateClient();
