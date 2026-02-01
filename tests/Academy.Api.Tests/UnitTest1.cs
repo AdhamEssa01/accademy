@@ -1707,6 +1707,48 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Exams_Builder_CanAttachQuestions()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var question1 = await CreateQuestionAsync(client, "Question 1");
+        var question2 = await CreateQuestionAsync(client, "Question 2");
+
+        var createResponse = await client.PostAsJsonAsync("/api/v1/exams", new
+        {
+            title = "Sample Exam",
+            type = 1,
+            durationMinutes = 60,
+            shuffleQuestions = true,
+            shuffleOptions = true,
+            showResultsAfterSubmit = false
+        });
+        createResponse.EnsureSuccessStatusCode();
+
+        using var createDocument = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var examId = createDocument.RootElement.GetProperty("id").GetGuid();
+
+        var updateQuestions = await client.PutAsJsonAsync($"/api/v1/exams/{examId}/questions", new
+        {
+            questions = new[]
+            {
+                new { questionId = question1, points = 10, sortOrder = 0 },
+                new { questionId = question2, points = 5, sortOrder = 1 }
+            }
+        });
+        updateQuestions.EnsureSuccessStatusCode();
+
+        var getResponse = await client.GetAsync($"/api/v1/exams/{examId}");
+        getResponse.EnsureSuccessStatusCode();
+
+        using var getDocument = JsonDocument.Parse(await getResponse.Content.ReadAsStringAsync());
+        var items = getDocument.RootElement.GetProperty("questions").EnumerateArray().ToArray();
+        Assert.Equal(2, items.Length);
+    }
+
     private async Task<(string AccessToken, string RefreshToken, UserSnapshot User)> LoginAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
@@ -2059,6 +2101,25 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
             type,
             points,
             reason
+        });
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("id").GetGuid();
+    }
+
+    private static async Task<Guid> CreateQuestionAsync(HttpClient client, string text)
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/questions", new
+        {
+            type = 1,
+            difficulty = 1,
+            text,
+            options = new[]
+            {
+                new { text = "Option A", isCorrect = false, sortOrder = 0 },
+                new { text = "Option B", isCorrect = true, sortOrder = 1 }
+            }
         });
         response.EnsureSuccessStatusCode();
 

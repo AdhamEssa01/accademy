@@ -73,6 +73,10 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<QuestionOption> QuestionOptions => Set<QuestionOption>();
 
+    public DbSet<Exam> Exams => Set<Exam>();
+
+    public DbSet<ExamQuestion> ExamQuestions => Set<ExamQuestion>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -484,6 +488,49 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
                 .WithMany()
                 .HasForeignKey(o => o.QuestionId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<Exam>(entity =>
+        {
+            entity.Property(e => e.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(e => e.Type)
+                .IsRequired();
+
+            entity.Property(e => e.DurationMinutes)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ExamQuestion>(entity =>
+        {
+            entity.Property(e => e.Points)
+                .IsRequired();
+
+            entity.Property(e => e.SortOrder)
+                .IsRequired();
+
+            entity.HasIndex(e => new { e.AcademyId, e.ExamId, e.QuestionId })
+                .IsUnique();
+
+            entity.HasOne<Exam>()
+                .WithMany()
+                .HasForeignKey(e => e.ExamId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Question>()
+                .WithMany()
+                .HasForeignKey(e => e.QuestionId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<Assignment>(entity =>

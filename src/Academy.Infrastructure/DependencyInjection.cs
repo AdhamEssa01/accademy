@@ -5,6 +5,7 @@ using Academy.Application.Abstractions.Auth;
 using Academy.Application.Abstractions.Assignments;
 using Academy.Application.Abstractions.Behavior;
 using Academy.Application.Abstractions.Catalog;
+using Academy.Application.Abstractions.Exams;
 using Academy.Application.Abstractions.Evaluations;
 using Academy.Application.Abstractions.Enrollments;
 using Academy.Application.Abstractions.Guardians;
@@ -69,6 +70,7 @@ public static class DependencyInjection
         services.AddScoped<IEvaluationTemplateService, EvaluationTemplateService>();
         services.AddScoped<IEvaluationService, EvaluationService>();
         services.AddScoped<IQuestionBankService, QuestionBankService>();
+        services.AddScoped<IExamService, ExamService>();
         services.AddSingleton<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 
         return services;
