@@ -46,7 +46,7 @@
 
 ### Dashboards
 - [x] Milestone 10.1 - Admin dashboard endpoints (KPIs: attendance, evals, behavior, exams)
-- [ ] Milestone 10.2 - Instructor dashboard endpoints (today sessions, pending grading, recent evals)
+- [x] Milestone 10.2 - Instructor dashboard endpoints (today sessions, pending grading, recent evals)
 - [ ] Milestone 10.3 - Parent dashboard endpoints (children summary, attendance, homework, announcements, results)
 
 ### Final quality gate

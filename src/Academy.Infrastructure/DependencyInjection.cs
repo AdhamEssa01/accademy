@@ -73,6 +73,7 @@ public static class DependencyInjection
         services.AddScoped<ICmsService, CmsService>();
         services.AddScoped<IAchievementService, AchievementService>();
         services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+        services.AddScoped<IInstructorDashboardService, InstructorDashboardService>();
         services.AddScoped<IEvaluationTemplateService, EvaluationTemplateService>();
         services.AddScoped<IEvaluationService, EvaluationService>();
         services.AddScoped<IQuestionBankService, QuestionBankService>();
