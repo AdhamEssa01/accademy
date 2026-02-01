@@ -48,7 +48,7 @@ Do NOT implement any payment-related domain models, endpoints, migrations, or UI
 - [x] Milestone 3.3 - Enrollments (Student <-> Group history)
 
 ### Attendance
-- [ ] Milestone 4.1 - Attendance (bulk per session) + permissions
+- [x] Milestone 4.1 - Attendance (bulk per session) + permissions
 - [ ] Milestone 4.2 - Attendance queries + basic reporting endpoints
 
 ### Learning workflow (no payments)
