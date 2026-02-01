@@ -73,6 +73,7 @@ public static class DependencyInjection
         services.AddScoped<IExamService, ExamService>();
         services.AddScoped<IExamAssignmentService, ExamAssignmentService>();
         services.AddScoped<IExamAttemptService, ExamAttemptService>();
+        services.AddScoped<IExamGradingService, ExamGradingService>();
         services.AddSingleton<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 
         return services;

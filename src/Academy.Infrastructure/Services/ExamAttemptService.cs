@@ -14,15 +14,18 @@ public sealed class ExamAttemptService : IExamAttemptService
     private readonly AppDbContext _dbContext;
     private readonly ITenantGuard _tenantGuard;
     private readonly ICurrentUserContext _currentUserContext;
+    private readonly IExamGradingService _examGradingService;
 
     public ExamAttemptService(
         AppDbContext dbContext,
         ITenantGuard tenantGuard,
-        ICurrentUserContext currentUserContext)
+        ICurrentUserContext currentUserContext,
+        IExamGradingService examGradingService)
     {
         _dbContext = dbContext;
         _tenantGuard = tenantGuard;
         _currentUserContext = currentUserContext;
+        _examGradingService = examGradingService;
     }
 
     public async Task<ExamAttemptDto> StartAsync(Guid assignmentId, StartExamAttemptRequest request, CancellationToken ct)
@@ -185,6 +188,8 @@ public sealed class ExamAttemptService : IExamAttemptService
         attempt.SubmittedAtUtc = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(ct);
+
+        await _examGradingService.GradeAttemptAsync(attempt.Id, ct);
 
         return Map(attempt);
     }

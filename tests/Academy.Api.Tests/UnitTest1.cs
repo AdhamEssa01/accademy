@@ -1889,6 +1889,101 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ExamGrading_AutoGrades_Mcq()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var questionResponse = await client.PostAsJsonAsync("/api/v1/questions", new
+        {
+            type = 1,
+            difficulty = 1,
+            text = "Auto grade?",
+            options = new[]
+            {
+                new { text = "No", isCorrect = false, sortOrder = 0 },
+                new { text = "Yes", isCorrect = true, sortOrder = 1 }
+            }
+        });
+        questionResponse.EnsureSuccessStatusCode();
+
+        using var questionDoc = JsonDocument.Parse(await questionResponse.Content.ReadAsStringAsync());
+        var questionId = questionDoc.RootElement.GetProperty("id").GetGuid();
+        var correctOptionId = questionDoc.RootElement.GetProperty("options")
+            .EnumerateArray()
+            .First(opt => opt.GetProperty("isCorrect").GetBoolean())
+            .GetProperty("id")
+            .GetGuid();
+
+        var examResponse = await client.PostAsJsonAsync("/api/v1/exams", new
+        {
+            title = "Auto Grade Exam",
+            type = 1,
+            durationMinutes = 20,
+            shuffleQuestions = false,
+            shuffleOptions = false,
+            showResultsAfterSubmit = false
+        });
+        examResponse.EnsureSuccessStatusCode();
+
+        using var examDocument = JsonDocument.Parse(await examResponse.Content.ReadAsStringAsync());
+        var examId = examDocument.RootElement.GetProperty("id").GetGuid();
+
+        var updateQuestions = await client.PutAsJsonAsync($"/api/v1/exams/{examId}/questions", new
+        {
+            questions = new[]
+            {
+                new { questionId, points = 10, sortOrder = 0 }
+            }
+        });
+        updateQuestions.EnsureSuccessStatusCode();
+
+        var studentId = await CreateStudentAsync(client, "Graded Student");
+
+        var assignResponse = await client.PostAsJsonAsync($"/api/v1/exams/{examId}/assignments", new
+        {
+            studentId,
+            openAtUtc = DateTime.UtcNow.AddMinutes(-1),
+            closeAtUtc = DateTime.UtcNow.AddDays(1),
+            attemptsAllowed = 1
+        });
+        assignResponse.EnsureSuccessStatusCode();
+
+        using var assignDocument = JsonDocument.Parse(await assignResponse.Content.ReadAsStringAsync());
+        var assignmentId = assignDocument.RootElement.GetProperty("id").GetGuid();
+
+        var startResponse = await client.PostAsJsonAsync($"/api/v1/assignments/{assignmentId}/attempts/start", new
+        {
+            studentId
+        });
+        startResponse.EnsureSuccessStatusCode();
+
+        using var startDocument = JsonDocument.Parse(await startResponse.Content.ReadAsStringAsync());
+        var attemptId = startDocument.RootElement.GetProperty("id").GetGuid();
+
+        var saveResponse = await client.PutAsJsonAsync($"/api/v1/attempts/{attemptId}/answers", new
+        {
+            answers = new[]
+            {
+                new { questionId, answerJson = correctOptionId.ToString() }
+            }
+        });
+        saveResponse.EnsureSuccessStatusCode();
+
+        var submitResponse = await client.PostAsync($"/api/v1/attempts/{attemptId}/submit", null);
+        submitResponse.EnsureSuccessStatusCode();
+
+        var resultsResponse = await client.GetAsync($"/api/v1/exams/{examId}/results?page=1&pageSize=10");
+        resultsResponse.EnsureSuccessStatusCode();
+
+        using var resultsDoc = JsonDocument.Parse(await resultsResponse.Content.ReadAsStringAsync());
+        var items = resultsDoc.RootElement.GetProperty("items").EnumerateArray().ToArray();
+        Assert.Contains(items, item => item.GetProperty("studentId").GetGuid() == studentId
+            && item.GetProperty("totalScore").GetDecimal() == 10);
+    }
+
+    [Fact]
     public async Task ExamResults_ParentSeesOnlyChildren()
     {
         var client = _factory.CreateClient();
