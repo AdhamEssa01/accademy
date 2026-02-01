@@ -44,8 +44,6 @@ Apply migrations:
 dotnet ef database update -p src/Academy.Infrastructure -s src/Academy.Api
 ```
 
-SQLite remains available as a fallback provider (set `Database:Provider` to `Sqlite`).
-
 ## Dev Admin Credentials (DEV ONLY)
 - Email: `admin@local.test`
 - Password: `Admin123$`

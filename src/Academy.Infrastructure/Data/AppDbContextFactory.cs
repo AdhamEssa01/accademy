@@ -22,35 +22,15 @@ public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
             .AddEnvironmentVariables()
             .Build();
 
-        var provider = configuration["Database:Provider"];
-        if (string.IsNullOrWhiteSpace(provider))
-        {
-            provider = "SqlServer";
-        }
-
         var connectionString = configuration.GetConnectionString("Default");
         if (string.IsNullOrWhiteSpace(connectionString))
         {
-            connectionString = string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase)
-                ? "Data Source=academy_dev.db"
-                : "Server=(localdb)\\MSSQLLocalDB;Database=AcademyDev;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
+            connectionString = "Server=.;Database=AcademyDev;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
         }
 
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-        if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
-        {
-            optionsBuilder.UseSqlServer(connectionString, b =>
-                b.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
-        }
-        else if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
-        {
-            optionsBuilder.UseSqlite(connectionString, b =>
-                b.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
-        }
-        else
-        {
-            throw new InvalidOperationException($"Unsupported database provider '{provider}'.");
-        }
+        optionsBuilder.UseSqlServer(connectionString, b =>
+            b.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
 
         var options = optionsBuilder.Options;
 
