@@ -47,6 +47,8 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
                 {
                     ["Database:Provider"] = "Sqlite",
                     ["ConnectionStrings:Default"] = $"Data Source={_dbPath}",
+                    ["RateLimiting:AuthPerMinute"] = "1000",
+                    ["RateLimiting:GeneralPerMinute"] = "10000",
                     ["Jwt:Issuer"] = TestIssuer,
                     ["Jwt:Audience"] = TestAudience,
                     ["Jwt:Key"] = TestKey,
@@ -274,6 +276,55 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, refreshResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task AuthRateLimit_ReturnsTooManyRequests()
+    {
+        var rateDbPath = Path.Combine(Path.GetTempPath(), $"academy_rate_{Guid.NewGuid():N}.db");
+        using var limitedFactory = CreateFactory(rateDbPath, authLimit: 3, generalLimit: 10000);
+        using (var scope = limitedFactory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await dbContext.Database.EnsureDeletedAsync();
+            await DbSeeder.SeedAsync(scope.ServiceProvider);
+        }
+
+        var client = limitedFactory.CreateClient();
+        HttpResponseMessage? lastResponse = null;
+
+        for (var i = 0; i < 12; i++)
+        {
+            lastResponse = await client.PostAsJsonAsync("/api/v1/auth/login", new
+            {
+                email = "invalid@local.test",
+                password = "badpass1"
+            });
+        }
+
+        Assert.NotNull(lastResponse);
+        Assert.Equal(HttpStatusCode.TooManyRequests, lastResponse!.StatusCode);
+        Assert.Equal("application/problem+json", lastResponse.Content.Headers.ContentType?.MediaType);
+
+        using var document = JsonDocument.Parse(await lastResponse.Content.ReadAsStringAsync());
+        Assert.Equal("Too many requests", document.RootElement.GetProperty("title").GetString());
+
+        if (File.Exists(rateDbPath))
+        {
+            File.Delete(rateDbPath);
+        }
+
+        var wal = rateDbPath + "-wal";
+        if (File.Exists(wal))
+        {
+            File.Delete(wal);
+        }
+
+        var shm = rateDbPath + "-shm";
+        if (File.Exists(shm))
+        {
+            File.Delete(shm);
+        }
     }
 
     [Fact]
@@ -1134,6 +1185,35 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         var userId = document.RootElement.GetProperty("user").GetProperty("id").GetGuid();
         return (accessToken, userId);
     }
+
+    private static WebApplicationFactory<Program> CreateFactory(string dbPath, int authLimit, int generalLimit)
+        => new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Testing");
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Database:Provider"] = "Sqlite",
+                    ["ConnectionStrings:Default"] = $"Data Source={dbPath}",
+                    ["RateLimiting:AuthPerMinute"] = authLimit.ToString(),
+                    ["RateLimiting:GeneralPerMinute"] = generalLimit.ToString(),
+                    ["Jwt:Issuer"] = TestIssuer,
+                    ["Jwt:Audience"] = TestAudience,
+                    ["Jwt:Key"] = TestKey,
+                    ["Jwt:AccessTokenMinutes"] = "15",
+                    ["Jwt:RefreshTokenDays"] = "7",
+                    ["Seeding:Enabled"] = "false",
+                    ["DebugEndpoints:Enabled"] = "true"
+                });
+            });
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IGoogleIdTokenValidator>();
+                services.AddSingleton<FakeGoogleIdTokenValidator>();
+                services.AddSingleton<IGoogleIdTokenValidator>(sp => sp.GetRequiredService<FakeGoogleIdTokenValidator>());
+            });
+        });
 
     private async Task<(Guid UserId, string Token)> CreateInstructorAsync(HttpClient client, string email)
     {

@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Academy.Api.Health;
 using Academy.Api.Middleware;
 using Academy.Api.Security;
@@ -19,6 +20,7 @@ using Asp.Versioning.ApiExplorer;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
@@ -79,6 +81,10 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<CreateDemoRequestValidator>();
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection("GoogleAuth"));
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 2 * 1024 * 1024;
+});
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IMediaStorage, LocalMediaStorage>();
 builder.Services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
@@ -134,6 +140,58 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
+
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+if (!builder.Environment.IsDevelopment()
+    && allowedOrigins.Any(origin => origin.Contains('*', StringComparison.Ordinal)))
+{
+    throw new InvalidOperationException("Wildcard CORS origins are not allowed outside Development.");
+}
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DefaultCors", policy =>
+    {
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        }
+    });
+});
+
+var authLimit = builder.Configuration.GetValue("RateLimiting:AuthPerMinute", 10);
+var generalLimit = builder.Configuration.GetValue("RateLimiting:GeneralPerMinute", 120);
+var isTesting = builder.Environment.IsEnvironment("Testing");
+var authPaths = new[]
+{
+    "/api/v1/auth/login",
+    "/api/v1/auth/register",
+    "/api/v1/auth/refresh",
+    "/api/v1/auth/google"
+};
+
+builder.Services.AddSingleton(PartitionedRateLimiter.Create<HttpContext, string>(context =>
+{
+    var path = context.Request.Path.Value ?? string.Empty;
+    var isAuth = authPaths.Any(p => path.Equals(p, StringComparison.OrdinalIgnoreCase));
+    var permitLimit = isAuth ? authLimit : generalLimit;
+    var ipKey = isTesting
+        ? "test"
+        : context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    var partitionKey = $"{(isAuth ? "auth" : "general")}:{ipKey}";
+
+    return RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey,
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = permitLimit,
+            Window = TimeSpan.FromMinutes(1),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0
+        });
+}));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -202,12 +260,28 @@ if (app.Environment.IsDevelopment())
     }
 }
 
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
 if (!app.Environment.IsEnvironment("Testing"))
 {
     app.UseHttpsRedirection();
 }
 
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    await next();
+});
+
 app.UseStaticFiles();
+app.UseRouting();
+app.UseCors("DefaultCors");
+app.UseMiddleware<RateLimitingMiddleware>();
 app.UseAuthentication();
 app.UseMiddleware<AcademyScopeMiddleware>();
 app.UseAuthorization();

@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>academy-api-5c7f3f5f-7419-46a6-8b8f-2a7c11c18dfb</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

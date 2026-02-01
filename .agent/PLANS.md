@@ -34,7 +34,7 @@ Do NOT implement any payment-related domain models, endpoints, migrations, or UI
 ## Progress
 ### Foundation updates
 - [x] Milestone 1.4 - Switch Dev DB to SQL Server (SSMS-visible) + keep tests isolated
-- [ ] Milestone 1.5 - Security hardening baseline (rate limit, headers, CORS, secrets)
+- [x] Milestone 1.5 - Security hardening baseline (rate limit, headers, CORS, secrets)
 
 ### Core academy structure
 - [ ] Milestone 2.1 - Academy & Branch management (Admin)

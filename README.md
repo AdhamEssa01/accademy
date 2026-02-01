@@ -54,11 +54,15 @@ SQLite remains available as a fallback provider (set `Database:Provider` to `Sql
 Set in `src/Academy.Api/appsettings.Development.json`:
 - Jwt:Issuer
 - Jwt:Audience
-- Jwt:Key
 - Jwt:AccessTokenMinutes
 - Jwt:RefreshTokenDays
 
-Replace the dev key before production deployments.
+Set the signing key via user-secrets:
+```powershell
+dotnet user-secrets --project src/Academy.Api set "Jwt:Key" "dev-only-key-change-me"
+```
+
+For CI/containers, set `Jwt__Key` as an environment variable.
 
 ## Google Login (DEV ONLY)
 Set in `src/Academy.Api/appsettings.Development.json`:
