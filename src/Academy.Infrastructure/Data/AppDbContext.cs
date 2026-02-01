@@ -69,6 +69,10 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<BehaviorEvent> BehaviorEvents => Set<BehaviorEvent>();
 
+    public DbSet<Question> Questions => Set<Question>();
+
+    public DbSet<QuestionOption> QuestionOptions => Set<QuestionOption>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -424,6 +428,62 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
                 .WithMany()
                 .HasForeignKey(b => b.CreatedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Question>(entity =>
+        {
+            entity.Property(q => q.Text)
+                .IsRequired()
+                .HasMaxLength(4000);
+
+            entity.Property(q => q.Tags)
+                .HasMaxLength(500);
+
+            entity.Property(q => q.CreatedAtUtc)
+                .IsRequired();
+
+            entity.Property(q => q.Type)
+                .IsRequired();
+
+            entity.Property(q => q.Difficulty)
+                .IsRequired();
+
+            entity.HasOne<Academy.Domain.Program>()
+                .WithMany()
+                .HasForeignKey(q => q.ProgramId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Course>()
+                .WithMany()
+                .HasForeignKey(q => q.CourseId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Level>()
+                .WithMany()
+                .HasForeignKey(q => q.LevelId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(q => q.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<QuestionOption>(entity =>
+        {
+            entity.Property(o => o.Text)
+                .IsRequired()
+                .HasMaxLength(1000);
+
+            entity.Property(o => o.SortOrder)
+                .IsRequired();
+
+            entity.HasIndex(o => new { o.AcademyId, o.QuestionId });
+
+            entity.HasOne<Question>()
+                .WithMany()
+                .HasForeignKey(o => o.QuestionId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<Assignment>(entity =>

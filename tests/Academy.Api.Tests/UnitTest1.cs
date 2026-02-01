@@ -1637,6 +1637,76 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         Assert.DoesNotContain(items, item => item.GetProperty("studentId").GetGuid() == otherStudentId);
     }
 
+    [Fact]
+    public async Task Questions_StaffCrud_Works()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var createResponse = await client.PostAsJsonAsync("/api/v1/questions", new
+        {
+            type = 1,
+            difficulty = 1,
+            text = "What is 2+2?",
+            tags = "math",
+            options = new[]
+            {
+                new { text = "3", isCorrect = false, sortOrder = 0 },
+                new { text = "4", isCorrect = true, sortOrder = 1 }
+            }
+        });
+        createResponse.EnsureSuccessStatusCode();
+
+        using var createDocument = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var questionId = createDocument.RootElement.GetProperty("id").GetGuid();
+
+        var getResponse = await client.GetAsync($"/api/v1/questions/{questionId}");
+        getResponse.EnsureSuccessStatusCode();
+
+        using var getDocument = JsonDocument.Parse(await getResponse.Content.ReadAsStringAsync());
+        var options = getDocument.RootElement.GetProperty("options").EnumerateArray().ToArray();
+        Assert.Equal(2, options.Length);
+
+        var updateResponse = await client.PutAsJsonAsync($"/api/v1/questions/{questionId}", new
+        {
+            type = 1,
+            difficulty = 2,
+            text = "Updated question",
+            tags = "math",
+            options = new[]
+            {
+                new { text = "2", isCorrect = false, sortOrder = 0 },
+                new { text = "4", isCorrect = true, sortOrder = 1 }
+            }
+        });
+        updateResponse.EnsureSuccessStatusCode();
+
+        var listResponse = await client.GetAsync("/api/v1/questions?page=1&pageSize=10");
+        listResponse.EnsureSuccessStatusCode();
+
+        using var listDocument = JsonDocument.Parse(await listResponse.Content.ReadAsStringAsync());
+        var items = listDocument.RootElement.GetProperty("items").EnumerateArray().ToArray();
+        Assert.Contains(items, item => item.GetProperty("id").GetGuid() == questionId);
+
+        var deleteResponse = await client.DeleteAsync($"/api/v1/questions/{questionId}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        var notFound = await client.GetAsync($"/api/v1/questions/{questionId}");
+        Assert.Equal(HttpStatusCode.NotFound, notFound.StatusCode);
+    }
+
+    [Fact]
+    public async Task Questions_ParentForbidden()
+    {
+        var client = _factory.CreateClient();
+        var parentToken = await RegisterAsync(client, $"parent_q_{Guid.NewGuid():N}@local.test", "Parent Q");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", parentToken);
+
+        var response = await client.GetAsync("/api/v1/questions?page=1&pageSize=10");
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     private async Task<(string AccessToken, string RefreshToken, UserSnapshot User)> LoginAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
