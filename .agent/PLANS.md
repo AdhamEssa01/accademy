@@ -56,7 +56,7 @@ Do NOT implement any payment-related domain models, endpoints, migrations, or UI
 - [x] Milestone 4.4 - Communication/Announcements + In-app notifications (Admin/Staff -> Parent)
 
 ### Quality gate
-- [ ] Milestone 4.9 - Codebase hygiene (remove demo endpoints if not needed, dotnet format, delete unused)
+- [x] Milestone 4.9 - Codebase hygiene (remove demo endpoints if not needed, dotnet format, delete unused)
 
 ---
 
