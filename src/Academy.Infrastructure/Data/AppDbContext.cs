@@ -67,6 +67,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<EvaluationItem> EvaluationItems => Set<EvaluationItem>();
 
+    public DbSet<BehaviorEvent> BehaviorEvents => Set<BehaviorEvent>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -385,6 +387,42 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
             entity.HasOne<AppUser>()
                 .WithMany()
                 .HasForeignKey(a => a.MarkedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<BehaviorEvent>(entity =>
+        {
+            entity.Property(b => b.Type)
+                .IsRequired();
+
+            entity.Property(b => b.Points)
+                .IsRequired();
+
+            entity.Property(b => b.Reason)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(b => b.Note)
+                .HasMaxLength(500);
+
+            entity.Property(b => b.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(b => new { b.AcademyId, b.StudentId });
+
+            entity.HasOne<Student>()
+                .WithMany()
+                .HasForeignKey(b => b.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Session>()
+                .WithMany()
+                .HasForeignKey(b => b.SessionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(b => b.CreatedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

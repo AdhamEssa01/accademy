@@ -3,6 +3,7 @@ using Academy.Application.Abstractions.Announcements;
 using Academy.Application.Abstractions.Attendance;
 using Academy.Application.Abstractions.Auth;
 using Academy.Application.Abstractions.Assignments;
+using Academy.Application.Abstractions.Behavior;
 using Academy.Application.Abstractions.Catalog;
 using Academy.Application.Abstractions.Evaluations;
 using Academy.Application.Abstractions.Enrollments;
@@ -58,6 +59,7 @@ public static class DependencyInjection
         services.AddScoped<IEnrollmentService, EnrollmentService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<IAttendanceQueryService, AttendanceQueryService>();
+        services.AddScoped<IBehaviorService, BehaviorService>();
         services.AddScoped<IAssignmentService, AssignmentService>();
         services.AddScoped<IAssignmentAttachmentService, AssignmentAttachmentService>();
         services.AddScoped<IAnnouncementService, AnnouncementService>();

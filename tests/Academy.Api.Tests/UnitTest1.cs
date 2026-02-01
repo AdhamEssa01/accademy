@@ -1530,6 +1530,75 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         Assert.Equal(studentId, items[0].GetProperty("studentId").GetGuid());
     }
 
+    [Fact]
+    public async Task BehaviorEvents_StaffCreateAndList_Works()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var studentId = await CreateStudentAsync(client, "Behavior Student");
+
+        var createResponse = await client.PostAsJsonAsync("/api/v1/behavior-events", new
+        {
+            studentId,
+            type = 1,
+            points = 5,
+            reason = "Great job",
+            note = "Keep it up"
+        });
+        createResponse.EnsureSuccessStatusCode();
+
+        var listResponse = await client.GetAsync($"/api/v1/students/{studentId}/behavior-events?page=1&pageSize=10");
+        listResponse.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await listResponse.Content.ReadAsStringAsync());
+        var items = document.RootElement.GetProperty("items").EnumerateArray().ToArray();
+        Assert.Single(items);
+        Assert.Equal("Great job", items[0].GetProperty("reason").GetString());
+    }
+
+    [Fact]
+    public async Task BehaviorEvents_ParentSeesOnlyChildren()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var studentId = await CreateStudentAsync(client, "Behavior Child");
+        var otherStudentId = await CreateStudentAsync(client, "Behavior Other");
+
+        await CreateBehaviorEventAsync(client, studentId, 1, 3, "Positive");
+        await CreateBehaviorEventAsync(client, otherStudentId, 2, -2, "Negative");
+
+        var parentEmail = $"parent_beh_{Guid.NewGuid():N}@local.test";
+        var (parentToken, parentUserId) = await RegisterWithUserAsync(client, parentEmail, "Parent Behavior");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var guardianId = await CreateGuardianAsync(client, "Behavior Guardian");
+
+        var linkUserResponse = await client.PostAsJsonAsync($"/api/v1/guardians/{guardianId}/link-user", new
+        {
+            userId = parentUserId
+        });
+        linkUserResponse.EnsureSuccessStatusCode();
+
+        var linkStudentResponse = await client.PostAsJsonAsync(
+            $"/api/v1/students/{studentId}/guardians/{guardianId}",
+            new { relation = "Parent" });
+        linkStudentResponse.EnsureSuccessStatusCode();
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", parentToken);
+        var response = await client.GetAsync("/api/v1/parent/me/behavior-events?page=1&pageSize=10");
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var items = document.RootElement.GetProperty("items").EnumerateArray().ToArray();
+
+        Assert.Single(items);
+        Assert.Equal(studentId, items[0].GetProperty("studentId").GetGuid());
+    }
+
     private async Task<(string AccessToken, string RefreshToken, UserSnapshot User)> LoginAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
@@ -1862,6 +1931,26 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
             {
                 new { criterionId, score }
             }
+        });
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("id").GetGuid();
+    }
+
+    private static async Task<Guid> CreateBehaviorEventAsync(
+        HttpClient client,
+        Guid studentId,
+        int type,
+        int points,
+        string reason)
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/behavior-events", new
+        {
+            studentId,
+            type,
+            points,
+            reason
         });
         response.EnsureSuccessStatusCode();
 
