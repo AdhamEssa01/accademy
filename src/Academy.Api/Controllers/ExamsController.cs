@@ -14,10 +14,12 @@ namespace Academy.Api.Controllers;
 public sealed class ExamsController : ControllerBase
 {
     private readonly IExamService _examService;
+    private readonly IExamAssignmentService _examAssignmentService;
 
-    public ExamsController(IExamService examService)
+    public ExamsController(IExamService examService, IExamAssignmentService examAssignmentService)
     {
         _examService = examService;
+        _examAssignmentService = examAssignmentService;
     }
 
     [HttpGet]
@@ -68,6 +70,27 @@ public sealed class ExamsController : ControllerBase
     {
         var items = await _examService.UpdateQuestionsAsync(id, request, ct);
         return Ok(items);
+    }
+
+    [HttpPost("{id:guid}/assignments")]
+    [Authorize(Policy = Policies.Staff)]
+    public async Task<ActionResult<ExamAssignmentDto>> CreateAssignment(
+        Guid id,
+        [FromBody] CreateExamAssignmentRequest request,
+        CancellationToken ct)
+    {
+        var assignment = await _examAssignmentService.CreateAsync(id, request, ct);
+        return Ok(assignment);
+    }
+
+    [HttpGet("{id:guid}/assignments")]
+    [Authorize(Policy = Policies.Staff)]
+    public async Task<ActionResult<IReadOnlyList<ExamAssignmentDto>>> ListAssignments(
+        Guid id,
+        CancellationToken ct)
+    {
+        var assignments = await _examAssignmentService.ListAsync(id, ct);
+        return Ok(assignments);
     }
 
     [HttpDelete("{id:guid}")]

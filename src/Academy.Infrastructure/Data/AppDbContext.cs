@@ -77,6 +77,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 
     public DbSet<ExamQuestion> ExamQuestions => Set<ExamQuestion>();
 
+    public DbSet<ExamAssignment> ExamAssignments => Set<ExamAssignment>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -530,6 +532,38 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
             entity.HasOne<Question>()
                 .WithMany()
                 .HasForeignKey(e => e.QuestionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ExamAssignment>(entity =>
+        {
+            entity.Property(e => e.OpenAtUtc)
+                .IsRequired();
+
+            entity.Property(e => e.CloseAtUtc)
+                .IsRequired();
+
+            entity.Property(e => e.AttemptsAllowed)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(e => new { e.AcademyId, e.ExamId });
+
+            entity.HasOne<Exam>()
+                .WithMany()
+                .HasForeignKey(e => e.ExamId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Group>()
+                .WithMany()
+                .HasForeignKey(e => e.GroupId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Student>()
+                .WithMany()
+                .HasForeignKey(e => e.StudentId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

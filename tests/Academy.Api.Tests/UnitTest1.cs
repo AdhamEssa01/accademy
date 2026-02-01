@@ -1749,6 +1749,74 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         Assert.Equal(2, items.Length);
     }
 
+    [Fact]
+    public async Task ExamAssignments_CreateForGroupAndStudent()
+    {
+        var client = _factory.CreateClient();
+        var (adminToken, _, _) = await LoginAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        var questionId = await CreateQuestionAsync(client, "Assignment Question");
+
+        var examResponse = await client.PostAsJsonAsync("/api/v1/exams", new
+        {
+            title = "Assignment Exam",
+            type = 1,
+            durationMinutes = 45,
+            shuffleQuestions = false,
+            shuffleOptions = false,
+            showResultsAfterSubmit = false
+        });
+        examResponse.EnsureSuccessStatusCode();
+
+        using var examDocument = JsonDocument.Parse(await examResponse.Content.ReadAsStringAsync());
+        var examId = examDocument.RootElement.GetProperty("id").GetGuid();
+
+        var updateQuestions = await client.PutAsJsonAsync($"/api/v1/exams/{examId}/questions", new
+        {
+            questions = new[]
+            {
+                new { questionId, points = 5, sortOrder = 0 }
+            }
+        });
+        updateQuestions.EnsureSuccessStatusCode();
+
+        var programId = await CreateProgramAsync(client, $"Program_{Guid.NewGuid():N}");
+        var courseId = await CreateCourseAsync(client, programId, $"Course_{Guid.NewGuid():N}");
+        var levelId = await CreateLevelAsync(client, courseId, $"Level_{Guid.NewGuid():N}", 1);
+        var groupId = await CreateGroupAsync(client, programId, courseId, levelId, "Exam Group", null);
+
+        var studentId = await CreateStudentAsync(client, "Exam Student");
+
+        var openAtUtc = DateTime.UtcNow;
+        var closeAtUtc = openAtUtc.AddDays(7);
+
+        var groupAssign = await client.PostAsJsonAsync($"/api/v1/exams/{examId}/assignments", new
+        {
+            groupId,
+            openAtUtc,
+            closeAtUtc,
+            attemptsAllowed = 2
+        });
+        groupAssign.EnsureSuccessStatusCode();
+
+        var studentAssign = await client.PostAsJsonAsync($"/api/v1/exams/{examId}/assignments", new
+        {
+            studentId,
+            openAtUtc,
+            closeAtUtc,
+            attemptsAllowed = 1
+        });
+        studentAssign.EnsureSuccessStatusCode();
+
+        var listResponse = await client.GetAsync($"/api/v1/exams/{examId}/assignments");
+        listResponse.EnsureSuccessStatusCode();
+
+        using var listDocument = JsonDocument.Parse(await listResponse.Content.ReadAsStringAsync());
+        var items = listDocument.RootElement.EnumerateArray().ToArray();
+        Assert.Equal(2, items.Length);
+    }
+
     private async Task<(string AccessToken, string RefreshToken, UserSnapshot User)> LoginAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
