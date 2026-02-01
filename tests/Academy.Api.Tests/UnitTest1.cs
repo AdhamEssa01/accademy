@@ -2378,6 +2378,28 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ParentDashboard_ReturnsShape()
+    {
+        var client = _factory.CreateClient();
+
+        var anonymous = await client.GetAsync("/api/v1/dashboards/parent");
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+
+        var parentEmail = $"parent_dash_{Guid.NewGuid():N}@local.test";
+        var parentToken = await RegisterAsync(client, parentEmail, "Parent Dash");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", parentToken);
+
+        var response = await client.GetAsync("/api/v1/dashboards/parent");
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.True(document.RootElement.TryGetProperty("children", out _));
+        Assert.True(document.RootElement.TryGetProperty("upcomingAssignments", out _));
+        Assert.True(document.RootElement.TryGetProperty("newAnnouncementsCount", out _));
+        Assert.True(document.RootElement.TryGetProperty("recentExamResults", out _));
+    }
+
+    [Fact]
     public async Task ExamResults_ParentSeesOnlyChildren()
     {
         var client = _factory.CreateClient();

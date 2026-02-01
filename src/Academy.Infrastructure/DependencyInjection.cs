@@ -74,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<IAchievementService, AchievementService>();
         services.AddScoped<IAdminDashboardService, AdminDashboardService>();
         services.AddScoped<IInstructorDashboardService, InstructorDashboardService>();
+        services.AddScoped<IParentDashboardService, ParentDashboardService>();
         services.AddScoped<IEvaluationTemplateService, EvaluationTemplateService>();
         services.AddScoped<IEvaluationService, EvaluationService>();
         services.AddScoped<IQuestionBankService, QuestionBankService>();
