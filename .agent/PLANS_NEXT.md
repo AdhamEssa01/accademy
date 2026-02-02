@@ -1,534 +1,169 @@
-# Academy Backend ExecPlan — Phase 2 (After Master Plan Completion)
+# Academy Backend Phase 2 ExecPlan (Focus on product, minimal tests)
 
-## Assumed current state (before starting this plan)
-- Master plan milestones are completed (DB -> SQL Server, security baseline, homework/announcements/routine, hygiene).
-- The system uses SQL Server locally and is runnable end-to-end.
-- Tenant scoping (AcademyId) and RBAC policies are already in place.
+## Hard requirements
+- SQL Server ONLY (remove SQLite entirely).
+- Dev ConnectionString MUST use: Server=.;Database=AcademyDev;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True
+- No payments/billing/fees modules in this phase.
+- Keep the codebase tidy: expressive file names, delete unused files safely.
 
-## Hard requirements for this phase
-- SQL Server ONLY (no SQLite in codebase).
-- ConnectionString MUST use: Server=.
-- Remove ALL SQLite references (packages, config, UseSqlite, docs, tests).
-- Continue using Clean Architecture and tenant query filters for IAcademyScoped entities.
+## Testing policy (IMPORTANT)
+We will keep tests MINIMAL:
+- No more than 1–2 integration tests per milestone (smoke tests).
+- Prefer integration “happy path” tests over many unit tests.
+- Only add a unit test when it prevents a known regression (e.g., a critical validator).
+- Target: tests code should not exceed ~15–20% of the non-test code added in a milestone.
 
 ## Global rules
-- No payment/billing/fees modules.
-- Keep controllers thin; business logic in Application.
-- All academy-scoped entities implement IAcademyScoped and rely on query filters (no IgnoreQueryFilters).
-- Authorization required on all endpoints except explicitly public CMS read endpoints.
+- Controllers thin; logic in Application services/use-cases.
+- All academy-scoped entities implement IAcademyScoped and rely on tenant filters (no IgnoreQueryFilters).
+- Authorization via existing Policies.
 - After each milestone:
   - dotnet test
-  - Update Progress checklist
-  - Commit: "milestone X.Y - <short title>"
+  - update Progress
+  - commit "milestone X.Y - <short title>"
 
 ## Progress
-### SQL Server enforcement
-- [x] Milestone 2.0 - SQL Server only (Server=.) + purge SQLite completely
+### Platform stabilization
+- [ ] Milestone 2.0 - SQL Server only (Server=.) + purge SQLite + single test DB
 
-### Learning modules
-- [x] Milestone 5.1 - Evaluation templates (Rubrics) CRUD (Admin)
-- [x] Milestone 5.2 - Student evaluations CRUD (Instructor/Staff) + Parent read
+### Learning modules (core)
+- [ ] Milestone 5.1 - Evaluation templates (Rubrics) CRUD (Admin)
+- [ ] Milestone 5.2 - Student evaluations (Staff/Instructor create) + Parent read
 
-- [x] Milestone 6.1 - Behavior events (points) CRUD (Staff) + Parent read
-- [x] Milestone 6.2 - Behavior summaries & risk flags (Admin/Staff dashboards)
+- [ ] Milestone 6.1 - Behavior events (points) CRUD (Staff) + Parent read
+- [ ] Milestone 6.2 - Risk list endpoint (absence+behavior+evaluations) (Staff)
 
-- [x] Milestone 7.1 - Question bank (CRUD) (Staff)
-- [x] Milestone 7.2 - Exam builder (create exams + attach questions) (Staff)
-- [x] Milestone 7.3 - Exam assignment (group/student, open/close, attempts) (Staff)
-- [x] Milestone 7.4 - Attempts (start/save/submit) (Student optional) + Parent read results
-- [x] Milestone 7.5 - Auto grading + scoring (MCQ/TF/Fill) (System)
-- [x] Milestone 7.6 - Manual grading (essay/file) (Instructor/Staff)
-- [x] Milestone 7.7 - Exam analytics endpoints (Admin/Staff)
+- [ ] Milestone 7.1 - Question bank CRUD (Staff)
+- [ ] Milestone 7.2 - Exam builder (create exams + attach questions) (Staff)
+- [ ] Milestone 7.3 - Exam assignments (group/student, window, attempts) (Staff)
+- [ ] Milestone 7.4 - Attempts (start/save/submit) + results (Parent read, Staff list)
+- [ ] Milestone 7.5 - Auto grading for MCQ/TF/Fill
+- [ ] Milestone 7.6 - Manual grading for Essay/FileUpload
+- [ ] Milestone 7.7 - Exam analytics (basic stats) (Staff)
 
 ### CMS / Website content
-- [x] Milestone 8.1 - CMS Pages & Sections (Admin edit/publish) + Public read endpoints
-- [x] Milestone 8.2 - Achievements CRUD (Admin) + Public read endpoints
+- [ ] Milestone 8.1 - CMS Pages & Sections (Admin edit/publish) + Public read
+- [ ] Milestone 8.2 - Achievements CRUD + Public read
 
 ### Dashboards
-- [x] Milestone 10.1 - Admin dashboard endpoints (KPIs: attendance, evals, behavior, exams)
-- [x] Milestone 10.2 - Instructor dashboard endpoints (today sessions, pending grading, recent evals)
-- [x] Milestone 10.3 - Parent dashboard endpoints (children summary, attendance, homework, announcements, results)
+- [ ] Milestone 10.1 - Admin dashboard endpoints
+- [ ] Milestone 10.2 - Instructor dashboard endpoints
+- [ ] Milestone 10.3 - Parent dashboard endpoints
 
-### Final quality gate
-- [x] Milestone 99.0 - Reliability & cleanup (remove dead code/files, tighten security, docs)
+### Final reliability pass
+- [ ] Milestone 99.0 - Cleanup + docs + security review
 
 ---
 
-# Milestone 2.0 - SQL Server only (Server=.) + purge SQLite completely
+# Milestone 2.0 - SQL Server only (Server=.) + purge SQLite + single test DB
 
 ## Goal
-Make the codebase strictly SQL Server and remove SQLite completely.
+Use SQL Server only, remove SQLite completely, and stop creating many test databases.
 
-## Required configuration
-In Academy.Api appsettings.Development.json:
-- ConnectionStrings:Default =
-  "Server=.;Database=AcademyDev;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
-
-No provider switch. Always UseSqlServer.
-
-## Code changes
+## Required changes
 1) Infrastructure DI:
-- Remove any Database:Provider logic / UseSqlite branches.
-- Always: options.UseSqlServer(connString, b => b.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
+- Always UseSqlServer with migrations assembly.
+- Remove any UseSqlite/provider switch.
 
-2) Design-time factory:
-- Ensure it creates AppDbContext with SQL Server using the same connection string pattern (Server=.).
-- Must work with `dotnet ef migrations add` and `dotnet ef database update`.
+2) Config:
+- appsettings.Development.json -> AcademyDev connection string (Server=.)
+- docs updated accordingly.
 
-3) Remove ALL SQLite packages and references:
-- Delete from csproj:
-  - Microsoft.EntityFrameworkCore.Sqlite
-  - Any SQLite-specific test helpers
-- Remove any Sqlite connection strings in docs/config.
+3) Remove SQLite:
+- Remove Microsoft.EntityFrameworkCore.Sqlite and all Sqlite references.
 
-4) Integration tests isolation WITHOUT SQLite:
-- Update Academy.Api.Tests to use SQL Server with unique DB per test run:
-  - DB name pattern: AcademyTest_<GUID>
-  - On test startup:
-    - Create DB (or let EF create via Migrate)
-  - On test teardown:
-    - Drop DB safely
-- Ensure tests are reliable and parallel-safe:
-  - Option: disable parallelization for integration tests OR ensure per-test DB name uniqueness.
+4) Tests minimal but stable:
+- Use ONE test DB: AcademyTest
+- Disable parallelization for integration tests
+- On test suite start: EnsureDeleted + Migrate
+- No per-test GUID database creation.
 
-## Verification
-- dotnet test
-- dotnet run --project src/Academy.Api
-- Confirm in SSMS (Server=.) that AcademyDev exists and has tables.
+## Tests (minimal)
+- 1 smoke integration test: start API + call /health/ready returns 200.
 
 ---
 
 # Milestone 5.1 - Evaluation templates (Rubrics) CRUD (Admin)
 
-## Goal
-Admin manages evaluation templates per Program/Course/Level, with rubric criteria and weights.
+## Implementation
+- Add EvaluationTemplate + RubricCriterion (academy-scoped)
+- CRUD endpoints (Admin)
+- Migration: AddEvaluationTemplates
 
-## Domain entities (all IAcademyScoped)
-1) EvaluationTemplate
-- Id, AcademyId
-- ProgramId? (optional)
-- CourseId? (optional)
-- LevelId? (optional)
-- Name (required max 200)
-- Description? (max 800)
-- CreatedAtUtc
-
-2) RubricCriterion
-- Id, AcademyId
-- TemplateId
-- Name (required max 150)
-- MaxScore (1..100)
-- Weight (0.0..10.0)
-- SortOrder (>=0)
-- CreatedAtUtc
-
-Constraints:
-- Unique: (AcademyId, TemplateId, Name)
-
-## Infrastructure
-- DbSets + configuration + migration: AddEvaluationsTemplates
-
-## Application
-- DTOs + Validators:
-  - Create/Update EvaluationTemplate
-  - Create/Update/Delete RubricCriterion
-- Services:
-  - IEvaluationTemplateService CRUD + criteria CRUD
-- All list endpoints paged.
-
-## API (Admin)
-- /api/v1/evaluation-templates (CRUD)
-- /api/v1/evaluation-templates/{id}/criteria (CRUD)
-
-## Tests
-- Admin can create template + criteria
-- Parent cannot access (403)
-- Tenant isolation test
+## Tests (minimal)
+- 1 integration test: Admin creates template + criteria -> 200 and can list.
 
 ---
 
-# Milestone 5.2 - Student evaluations (Instructor/Staff create) + Parent read
+# Milestone 5.2 - Student evaluations + Parent read
 
-## Goal
-Instructor/staff can evaluate a student (session-based or periodic).
-Parent can read evaluations for their children.
+## Implementation
+- Add Evaluation + EvaluationItem (academy-scoped)
+- Staff/Instructor create evaluation
+- Parent read for children
+- Migration: AddEvaluations
 
-## Domain entities (IAcademyScoped)
-1) Evaluation
-- Id, AcademyId
-- StudentId
-- TemplateId
-- SessionId? (optional)
-- EvaluatedByUserId
-- Notes? (max 1000)
-- TotalScore (>=0)
-- CreatedAtUtc
-
-2) EvaluationItem
-- Id, AcademyId
-- EvaluationId
-- CriterionId
-- Score (0..MaxScore)
-- Comment? (max 500)
-
-Constraints:
-- Unique: (AcademyId, EvaluationId, CriterionId)
-
-## Application
-- Services:
-  - IEvaluationService:
-    - CreateAsync(studentId, templateId, items, notes, sessionId?)
-    - ListForStudentAsync(studentId, paged)
-    - ParentListMyChildrenAsync(paged, from?, to?)
-- Rules:
-  - Staff can evaluate any student in tenant.
-  - Instructor can evaluate students only in groups they teach OR session instructor match (choose strict: session match OR enrollment in their group).
-  - Parent sees only children.
-
-## API
-Staff:
-- POST /api/v1/evaluations
-- GET  /api/v1/students/{id}/evaluations?page=&pageSize=
-Parent:
-- GET /api/v1/parent/me/evaluations?from=&to=&page=&pageSize=
-
-## Tests
-- Instructor creates evaluation for own student works; other instructor gets 403.
-- Parent sees only child evaluations.
+## Tests (minimal)
+- 1 integration test: Parent sees only child evaluations (happy path).
 
 ---
 
-# Milestone 6.1 - Behavior events CRUD (Staff) + Parent read
+# Milestone 6.1 - Behavior events + Parent read
 
-## Domain entities (IAcademyScoped)
-BehaviorEvent
-- Id, AcademyId
-- StudentId
-- SessionId? (optional)
-- Type enum: Positive, Negative
-- Points (range -20..20; negative allowed)
-- Reason (required max 200)
-- Note? (max 500)
-- CreatedByUserId
-- CreatedAtUtc
+## Implementation
+- BehaviorEvent entity + CRUD create/list
+- Parent read for children
+- Migration: AddBehaviorEvents
 
-## Infrastructure
-- DbSet + migration: AddBehaviorEvents
-
-## Application
-- IBehaviorService:
-  - CreateAsync(...)
-  - ListForStudentAsync(studentId, from?, to?, paged)
-  - ParentListMyChildrenAsync(from?, to?, paged)
-
-## API
-Staff:
-- POST /api/v1/behavior-events
-- GET  /api/v1/students/{id}/behavior-events?from=&to=&page=&pageSize=
-Parent:
-- GET /api/v1/parent/me/behavior-events?from=&to=&page=&pageSize=
-
-## Tests
-- Staff create + list works
-- Parent sees only children
+## Tests (minimal)
+- 1 integration test: Parent sees only own child behavior events.
 
 ---
 
-# Milestone 6.2 - Behavior summaries & risk flags (Admin/Staff dashboards)
+# Milestone 6.2 - Risk list endpoint
 
-## Goal
-Provide summary endpoints:
-- Current points (weekly/monthly)
-- Risk flags: high absence + negative behavior + low evaluations (simple thresholds)
+## Implementation
+- /api/v1/students/risk?from=&to=&page=&pageSize=
+- Simple scoring from:
+  - attendance rate (existing)
+  - behavior points
+  - latest evaluation score
+- thresholds configurable in appsettings
 
-## Application
-- IStudentRiskService:
-  - GetRiskListAsync(from,to, paged)
-- Keep thresholds in config (appsettings) or constants.
-
-## API (Staff)
-- GET /api/v1/students/risk?from=&to=&page=&pageSize=
-
-## Tests
-- Returns paged shape and filters by tenant.
+## Tests (minimal)
+- 1 integration test: returns paged response shape for staff.
 
 ---
 
-# Milestone 7.1 - Question bank (CRUD) (Staff)
-
-## Domain entities (IAcademyScoped)
-Question
-- Id, AcademyId
-- ProgramId?, CourseId?, LevelId?
-- Type enum: MCQ, TrueFalse, FillBlank, Essay, FileUpload
-- Text (required max 4000)
-- Difficulty enum: Easy, Medium, Hard
-- Tags (string? max 500) OR separate table QuestionTag (optional)
-- CreatedByUserId
-- CreatedAtUtc
-
-QuestionOption (for MCQ/TF)
-- Id, AcademyId
-- QuestionId
-- Text (required max 1000)
-- IsCorrect (bool)
-- SortOrder (>=0)
-
-## Infrastructure
-- DbSets + migration: AddQuestionBank
-
-## API (Staff)
-- /api/v1/questions (CRUD + paging + filters)
-
-## Tests
-- Staff CRUD works; parent forbidden.
+# Milestone 7.1–7.7 Exams
+(Implement as previously outlined; keep tests to 1 per 2 milestones)
+- Only add unit tests for grading logic if needed.
 
 ---
 
-# Milestone 7.2 - Exam builder (create exams + attach questions) (Staff)
+# Milestone 8.1–8.2 CMS
+- Public endpoints are AllowAnonymous but must only return Published content.
 
-## Domain entities (IAcademyScoped)
-Exam
-- Id, AcademyId
-- Title (required max 200)
-- Type enum: Quiz, Exam, Placement
-- DurationMinutes (1..240)
-- ShuffleQuestions (bool)
-- ShuffleOptions (bool)
-- ShowResultsAfterSubmit (bool)
-- CreatedByUserId
-- CreatedAtUtc
-
-ExamQuestion
-- Id, AcademyId
-- ExamId
-- QuestionId
-- Points (0..100)
-- SortOrder (>=0)
-
-Migration: AddExams
-
-## API (Staff)
-- /api/v1/exams (CRUD)
-- /api/v1/exams/{id}/questions (add/remove/reorder)
-
-## Tests
-- Build exam with questions.
+## Tests (minimal)
+- 1 integration test: public CMS returns only published.
 
 ---
 
-# Milestone 7.3 - Exam assignment (group/student, open/close, attempts) (Staff)
+# Milestone 10 dashboards
+- Provide aggregated read-only endpoints.
 
-## Domain entities (IAcademyScoped)
-ExamAssignment
-- Id, AcademyId
-- ExamId
-- GroupId? (optional)
-- StudentId? (optional)
-- OpenAtUtc
-- CloseAtUtc
-- AttemptsAllowed (1..5)
-- CreatedAtUtc
-
-Rules:
-- Either GroupId or StudentId must be set.
-
-Migration: AddExamAssignments
-
-## API (Staff)
-- POST /api/v1/exams/{id}/assignments
-- GET  /api/v1/exams/{id}/assignments
-
-## Tests
-- Create assignment for group and for student.
+## Tests (minimal)
+- 1 integration test: correct authorization (401/403/200) for at least one dashboard.
 
 ---
 
-# Milestone 7.4 - Attempts (start/save/submit) + Parent read results
+# Milestone 99.0 - Cleanup + docs + security review
 
-## Domain entities (IAcademyScoped)
-ExamAttempt
-- Id, AcademyId
-- AssignmentId
-- StudentId
-- StartedAtUtc
-- SubmittedAtUtc?
-- Status enum: InProgress, Submitted, Graded
-- TotalScore (>=0)
-- CreatedAtUtc
-
-AttemptAnswer
-- Id, AcademyId
-- AttemptId
-- QuestionId
-- AnswerJson (required)
-- IsCorrect?
-- Score?
-- Feedback? (max 500)
-
-Migration: AddExamAttempts
-
-## API
-Student (optional now; can be AnyAuthenticated but must be Student role if you created Student users):
-- POST /api/v1/assignments/{id}/attempts/start
-- PUT  /api/v1/attempts/{id}/answers  (autosave)
-- POST /api/v1/attempts/{id}/submit
-
-Parent:
-- GET /api/v1/parent/me/exam-results?page=&pageSize=
-
-Staff:
-- GET /api/v1/exams/{id}/results?page=&pageSize=
-
-## Tests
-- Start->submit works with basic happy path.
-- Parent sees only children results.
-
----
-
-# Milestone 7.5 - Auto grading + scoring (MCQ/TF/Fill)
-
-## Goal
-Grade submitted attempts automatically for supported question types.
-
-## Application
-- IExamGradingService:
-  - GradeAttemptAsync(attemptId) -> sets per-answer score and total score, status = Graded if no manual items.
-Rules:
-- Essay/FileUpload remain pending manual grading.
-
-## Tests
-- Auto-graded attempt gets correct score.
-
----
-
-# Milestone 7.6 - Manual grading (essay/file) (Instructor/Staff)
-
-## API (Staff)
-- POST /api/v1/attempt-answers/{id}/grade  { score, feedback }
-- Permission: Instructor can grade attempts for assignments in their group, or Staff always.
-
-## Tests
-- Instructor can grade own group; not others.
-
----
-
-# Milestone 7.7 - Exam analytics endpoints (Admin/Staff)
-
-## Endpoints
-- GET /api/v1/exams/{id}/stats
-  - average score, count attempts, distribution buckets (simple), most missed questions (top 5)
-
-## Tests
-- Stats returns expected shape.
-
----
-
-# Milestone 8.1 - CMS Pages & Sections (Admin edit/publish) + Public read
-
- "Public website content" for Landing/Home and basic pages.
-
-## Domain (IAcademyScoped)
-CmsPage
-- Id, AcademyId
-- Slug (required max 50) e.g. "home", "landing", "about"
-- Title (max 200)
-- PublishedAtUtc?
-- CreatedAtUtc
-
-CmsSection
-- Id, AcademyId
-- PageId
-- Type (required max 50) e.g. "hero", "stats", "programs"
-- JsonContent (required)
-- SortOrder (>=0)
-- IsVisible (bool)
-- CreatedAtUtc
-
-Migration: AddCms
-
-## API
-Admin:
-- GET/PUT /api/v1/cms/pages/{slug}
-- PUT /api/v1/cms/pages/{slug}/sections (bulk reorder/update)
-Public (AllowAnonymous):
-- GET /api/v1/public/cms/pages/{slug}
-
-Rules:
-- Public endpoints must return only Published pages/sections.
-
-## Tests
-- Admin edits; public reads published only.
-
----
-
-# Milestone 8.2 - Achievements CRUD + Public read
-
-## Domain (IAcademyScoped)
-Achievement
-- Id, AcademyId
-- Title (required max 200)
-- Description? (max 2000)
-- DateUtc (required)
-- MediaUrl? (max 500)
-- Tags? (max 200)
-- CreatedAtUtc
-
-Migration: AddAchievements
-
-## API
-Admin:
-- /api/v1/achievements (CRUD)
-Public:
-- GET /api/v1/public/achievements?page=&pageSize=
-
-## Tests
-- Public lists only tenant’s published (if you introduce published flag; otherwise all).
-
----
-
-# Milestones 10.1–10.3 Dashboards
-
-## Goal
-Expose role dashboards (read-only aggregated endpoints).
-
-Admin dashboard:
-- attendance today summary
-- risky students list (from 6.2)
-- pending manual grading count
-- last 7 days exam attempts stats
-
-Instructor dashboard:
-- today sessions mine
-- pending grading
-- recent attendance submission status
-
-Parent dashboard:
-- children summary (attendance rate, last eval score, behavior points)
-- upcoming assignments (due soon)
-- new announcements count
-- recent exam results
-
-## API
-- GET /api/v1/dashboards/admin
-- GET /api/v1/dashboards/instructor
-- GET /api/v1/dashboards/parent
-
-## Tests
-- Basic shape + correct authorization.
-
----
-
-# Milestone 99.0 - Reliability & cleanup
-
-## Goal
-Keep repo clean and secure.
-
-Actions:
-- Remove any demo/debug endpoints not needed (or hide from Swagger).
-- Ensure no SQLite strings/packages remain (final scan).
-- Ensure SQL Server connection is Server=. for dev.
-- Ensure warnings as errors still pass.
-- Ensure dotnet test passes.
+## Actions
+- Ensure no SQLite remains (final search).
+- Ensure Server=. connection string documented.
+- Ensure secrets are not in appsettings (Jwt key via user-secrets/env).
+- Remove dead code/files safely.
+- dotnet test
 
 Stop after completion.

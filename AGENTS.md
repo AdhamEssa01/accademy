@@ -17,3 +17,7 @@ For each milestone:
 - `dotnet restore` completes.
 - `dotnet build` succeeds with warnings treated as errors.
 - `dotnet test` succeeds.
+## Testing policy (IMPORTANT)
+- Keep tests minimal: 1 smoke integration test per milestone (max 2).
+- Avoid large unit test suites. Focus on implementing product features.
+- Do not create per-test databases; use one test database and reset it.

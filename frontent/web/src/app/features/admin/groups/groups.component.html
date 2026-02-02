@@ -1,0 +1,35 @@
+<mat-card class="page-card">
+  <div class="page-header">
+    <div>
+      <h2>Groups</h2>
+      <p>Create teaching groups and assign instructors.</p>
+    </div>
+    <button mat-raised-button color="primary" (click)="openCreate()">
+      <mat-icon>add</mat-icon>
+      New group
+    </button>
+  </div>
+
+  <app-skeleton-cards *ngIf="isLoading" [count]="4"></app-skeleton-cards>
+
+  <div class="card-grid" *ngIf="!isLoading && groups.length > 0">
+    <mat-card *ngFor="let group of groups" class="item-card">
+      <h3>{{ group.name }}</h3>
+      <p>Program: {{ group.programId }}</p>
+      <p>Course: {{ group.courseId }}</p>
+      <p>Level: {{ group.levelId }}</p>
+      <p>Instructor: {{ group.instructorUserId || 'Unassigned' }}</p>
+      <div class="item-actions">
+        <button mat-button color="primary" (click)="openEdit(group)">Edit</button>
+        <button mat-button color="warn" (click)="delete(group)">Delete</button>
+      </div>
+    </mat-card>
+  </div>
+
+  <div class="empty-state" *ngIf="!isLoading && groups.length === 0">
+    No groups yet. Add the first group.
+  </div>
+
+  <app-pagination [page]="page" [pageSize]="pageSize" [total]="total" (pageChange)="onPageChange($event)">
+  </app-pagination>
+</mat-card>

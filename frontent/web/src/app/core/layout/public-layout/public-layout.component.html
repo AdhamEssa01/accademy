@@ -1,0 +1,31 @@
+<mat-toolbar class="public-toolbar">
+  <div class="brand">
+    <span class="brand-mark">A</span>
+    <span class="brand-name">Academy</span>
+  </div>
+  <span class="spacer"></span>
+  <nav class="nav-links">
+    <a mat-button routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Home</a>
+    <a mat-button routerLink="/login" routerLinkActive="active">Login</a>
+    <a mat-raised-button color="primary" routerLink="/register">Get started</a>
+  </nav>
+</mat-toolbar>
+
+<main class="public-content">
+  <router-outlet></router-outlet>
+</main>
+
+<footer class="public-footer">
+  <div class="footer-content">
+    <div>
+      <div class="brand-name">Academy</div>
+      <p>Modern learning experiences for every learner.</p>
+    </div>
+    <div class="footer-links">
+      <a href="#" aria-label="Privacy policy">Privacy</a>
+      <a href="#" aria-label="Terms of service">Terms</a>
+      <a href="#" aria-label="Support">Support</a>
+    </div>
+  </div>
+  <div class="footer-bottom">© 2026 Academy. All rights reserved.</div>
+</footer>

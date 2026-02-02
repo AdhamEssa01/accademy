@@ -1,0 +1,33 @@
+<mat-card class="page-card">
+  <div class="page-header">
+    <div>
+      <h2>Achievements</h2>
+      <p>Highlight academy milestones on the public site.</p>
+    </div>
+    <button mat-raised-button color="primary" (click)="openCreate()">
+      <mat-icon>add</mat-icon>
+      New achievement
+    </button>
+  </div>
+
+  <app-skeleton-cards *ngIf="isLoading" [count]="4"></app-skeleton-cards>
+
+  <div class="card-grid" *ngIf="!isLoading && achievements.length > 0">
+    <mat-card *ngFor="let achievement of achievements" class="item-card">
+      <h3>{{ achievement.title }}</h3>
+      <p>{{ achievement.description || 'No description yet.' }}</p>
+      <p class="tag" *ngIf="achievement.tag">Tag: {{ achievement.tag }}</p>
+      <div class="item-actions">
+        <button mat-button color="primary" (click)="openEdit(achievement)">Edit</button>
+        <button mat-button color="warn" (click)="delete(achievement)">Delete</button>
+      </div>
+    </mat-card>
+  </div>
+
+  <div class="empty-state" *ngIf="!isLoading && achievements.length === 0">
+    No achievements yet. Add your first achievement.
+  </div>
+
+  <app-pagination [page]="page" [pageSize]="pageSize" [total]="total" (pageChange)="onPageChange($event)">
+  </app-pagination>
+</mat-card>

@@ -1,0 +1,27 @@
+<h2 mat-dialog-title>{{ data.group ? 'Edit group' : 'New group' }}</h2>
+<mat-dialog-content [formGroup]="form" class="dialog-form">
+  <mat-form-field appearance="outline">
+    <mat-label>Name</mat-label>
+    <input matInput formControlName="name" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Program ID</mat-label>
+    <input matInput formControlName="programId" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Course ID</mat-label>
+    <input matInput formControlName="courseId" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Level ID</mat-label>
+    <input matInput formControlName="levelId" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Instructor User ID (optional)</mat-label>
+    <input matInput formControlName="instructorUserId" />
+  </mat-form-field>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>Cancel</button>
+  <button mat-raised-button color="primary" (click)="save()">Save</button>
+</mat-dialog-actions>

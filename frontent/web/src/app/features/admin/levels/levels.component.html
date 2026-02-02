@@ -1,0 +1,44 @@
+<mat-card class="page-card">
+  <div class="page-header">
+    <div>
+      <h2>Levels</h2>
+      <p>Maintain course levels and ordering.</p>
+    </div>
+    <button mat-raised-button color="primary" (click)="openCreate()">
+      <mat-icon>add</mat-icon>
+      New level
+    </button>
+  </div>
+
+  <div class="filter-row">
+    <mat-form-field appearance="outline">
+      <mat-label>Course filter</mat-label>
+      <mat-select [(value)]="selectedCourseId" (selectionChange)="onCourseChange()">
+        <mat-option [value]="null">All courses</mat-option>
+        <mat-option *ngFor="let course of courses" [value]="course.id">
+          {{ course.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <app-skeleton-cards *ngIf="isLoading" [count]="4"></app-skeleton-cards>
+
+  <div class="card-grid" *ngIf="!isLoading && levels.length > 0">
+    <mat-card *ngFor="let level of levels" class="item-card">
+      <h3>{{ level.name }}</h3>
+      <p>Sort: {{ level.sortOrder }}</p>
+      <div class="item-actions">
+        <button mat-button color="primary" (click)="openEdit(level)">Edit</button>
+        <button mat-button color="warn" (click)="delete(level)">Delete</button>
+      </div>
+    </mat-card>
+  </div>
+
+  <div class="empty-state" *ngIf="!isLoading && levels.length === 0">
+    No levels yet. Add the first level.
+  </div>
+
+  <app-pagination [page]="page" [pageSize]="pageSize" [total]="total" (pageChange)="onPageChange($event)">
+  </app-pagination>
+</mat-card>

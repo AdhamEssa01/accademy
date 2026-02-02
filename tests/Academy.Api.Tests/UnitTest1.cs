@@ -16,7 +16,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -31,15 +30,14 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
     private const string TestIssuer = "academy-test";
     private const string TestAudience = "academy-test";
     private const string TestKey = "dev-test-key-please-change-1234567890";
+    private const string TestDatabaseName = "AcademyTest";
 
     private readonly WebApplicationFactory<Program> _factory;
-    private readonly string _databaseName;
     private readonly string _connectionString;
 
     public ApiIntegrationTests()
     {
-        _databaseName = $"AcademyTest_{Guid.NewGuid():N}";
-        _connectionString = BuildConnectionString(_databaseName);
+        _connectionString = BuildConnectionString();
 
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -72,10 +70,9 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        await DropDatabaseAsync(_databaseName);
+        await ResetDatabaseAsync();
 
         using var scope = _factory.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await DbSeeder.SeedAsync(scope.ServiceProvider);
     }
 
@@ -83,7 +80,7 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
     {
         _factory.Dispose();
 
-        return DropDatabaseAsync(_databaseName);
+        return Task.CompletedTask;
     }
 
     [Fact]
@@ -251,11 +248,9 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task AuthRateLimit_ReturnsTooManyRequests()
     {
-        var rateDatabaseName = $"AcademyTestRate_{Guid.NewGuid():N}";
-        using var limitedFactory = CreateFactory(rateDatabaseName, authLimit: 3, generalLimit: 10000);
+        using var limitedFactory = CreateFactory(authLimit: 3, generalLimit: 10000);
         using (var scope = limitedFactory.Services.CreateScope())
         {
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             await DbSeeder.SeedAsync(scope.ServiceProvider);
         }
 
@@ -278,7 +273,6 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         using var document = JsonDocument.Parse(await lastResponse.Content.ReadAsStringAsync());
         Assert.Equal("Too many requests", document.RootElement.GetProperty("title").GetString());
 
-        await DropDatabaseAsync(rateDatabaseName);
     }
 
     [Fact]
@@ -2548,7 +2542,7 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         return (accessToken, userId);
     }
 
-    private static WebApplicationFactory<Program> CreateFactory(string databaseName, int authLimit, int generalLimit)
+    private static WebApplicationFactory<Program> CreateFactory(int authLimit, int generalLimit)
         => new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Testing");
@@ -2556,7 +2550,7 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["ConnectionStrings:Default"] = BuildConnectionString(databaseName),
+                    ["ConnectionStrings:Default"] = BuildConnectionString(),
                     ["RateLimiting:AuthPerMinute"] = authLimit.ToString(),
                     ["RateLimiting:GeneralPerMinute"] = generalLimit.ToString(),
                     ["Jwt:Issuer"] = TestIssuer,
@@ -2567,15 +2561,15 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
                     ["Seeding:Enabled"] = "false",
                     ["DebugEndpoints:Enabled"] = "true"
                 });
-            });
-            builder.ConfigureTestServices(services =>
-            {
-                ConfigureSqlServerForTests(services, BuildConnectionString(databaseName));
-                services.RemoveAll<IGoogleIdTokenValidator>();
-                services.AddSingleton<FakeGoogleIdTokenValidator>();
-                services.AddSingleton<IGoogleIdTokenValidator>(sp => sp.GetRequiredService<FakeGoogleIdTokenValidator>());
-            });
         });
+        builder.ConfigureTestServices(services =>
+        {
+            ConfigureSqlServerForTests(services, BuildConnectionString());
+            services.RemoveAll<IGoogleIdTokenValidator>();
+            services.AddSingleton<FakeGoogleIdTokenValidator>();
+            services.AddSingleton<IGoogleIdTokenValidator>(sp => sp.GetRequiredService<FakeGoogleIdTokenValidator>());
+        });
+    });
 
     private async Task<(Guid UserId, string Token)> CreateInstructorAsync(HttpClient client, string email)
     {
@@ -2941,20 +2935,21 @@ public sealed class ApiIntegrationTests : IAsyncLifetime
         });
     }
 
-    private static string BuildConnectionString(string databaseName)
-        => $"Server=.;Database={databaseName};Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True;Pooling=False";
+    private static string BuildConnectionString()
+        => $"Server=.;Database={TestDatabaseName};Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True;Pooling=False";
 
-    private static async Task DropDatabaseAsync(string databaseName)
+    private async Task ResetDatabaseAsync()
     {
-        var masterConnection = "Server=.;Database=master;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True;";
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var migrations = await dbContext.Database.GetMigrationsAsync();
+        if (!migrations.Any())
+        {
+            throw new InvalidOperationException("No EF Core migrations found for AppDbContext.");
+        }
 
-        await using var connection = new SqlConnection(masterConnection);
-        await connection.OpenAsync();
-
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            $"IF DB_ID(N'{databaseName}') IS NOT NULL BEGIN ALTER DATABASE [{databaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{databaseName}]; END";
-        await command.ExecuteNonQueryAsync();
+        await dbContext.Database.EnsureDeletedAsync();
+        await dbContext.Database.MigrateAsync();
     }
 
     private readonly record struct UserSnapshot(Guid Id, string Email);

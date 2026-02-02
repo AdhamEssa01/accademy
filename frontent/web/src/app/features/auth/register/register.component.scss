@@ -1,0 +1,33 @@
+.auth-shell {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+}
+
+mat-card {
+  width: min(460px, 100%);
+  padding: 2rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.auth-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.error {
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
+.auth-footer {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.auth-footer a {
+  color: #0ea5e9;
+  text-decoration: none;
+}

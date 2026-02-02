@@ -1,0 +1,33 @@
+<mat-card class="page-card">
+  <div class="page-header">
+    <div>
+      <h2>Students</h2>
+      <p>Manage student profiles and enrollment data.</p>
+    </div>
+    <button mat-raised-button color="primary" (click)="openCreate()">
+      <mat-icon>add</mat-icon>
+      New student
+    </button>
+  </div>
+
+  <app-skeleton-cards *ngIf="isLoading" [count]="4"></app-skeleton-cards>
+
+  <div class="card-grid" *ngIf="!isLoading && students.length > 0">
+    <mat-card *ngFor="let student of students" class="item-card">
+      <h3>{{ student.fullName }}</h3>
+      <p>Date of birth: {{ student.dateOfBirth || 'Not set' }}</p>
+      <div class="item-actions">
+        <button mat-button color="primary" [routerLink]="['/app/admin/students', student.id]">Details</button>
+        <button mat-button color="primary" (click)="openEdit(student)">Edit</button>
+        <button mat-button color="warn" (click)="delete(student)">Delete</button>
+      </div>
+    </mat-card>
+  </div>
+
+  <div class="empty-state" *ngIf="!isLoading && students.length === 0">
+    No students yet. Add the first student.
+  </div>
+
+  <app-pagination [page]="page" [pageSize]="pageSize" [total]="total" (pageChange)="onPageChange($event)">
+  </app-pagination>
+</mat-card>

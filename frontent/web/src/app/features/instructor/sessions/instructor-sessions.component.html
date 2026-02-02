@@ -1,0 +1,28 @@
+<mat-card class="page-card">
+  <h2>My sessions</h2>
+  <div class="filter-row">
+    <mat-form-field appearance="outline">
+      <mat-label>From</mat-label>
+      <input matInput type="date" [(ngModel)]="from" (change)="load()" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>To</mat-label>
+      <input matInput type="date" [(ngModel)]="to" (change)="load()" />
+    </mat-form-field>
+  </div>
+  <app-skeleton-cards *ngIf="isLoading" [count]="3"></app-skeleton-cards>
+
+  <div class="card-grid" *ngIf="!isLoading && sessions.length > 0">
+    <mat-card *ngFor="let session of sessions" class="item-card">
+      <h3>{{ session.startsAtUtc }}</h3>
+      <p>Group: {{ session.groupId }}</p>
+      <p>Duration: {{ session.durationMinutes }} min</p>
+    </mat-card>
+  </div>
+
+  <div class="empty-state" *ngIf="!isLoading && sessions.length === 0">
+    No sessions scheduled.
+  </div>
+  <app-pagination [page]="page" [pageSize]="pageSize" [total]="total" (pageChange)="onPageChange($event)">
+  </app-pagination>
+</mat-card>

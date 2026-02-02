@@ -1,0 +1,36 @@
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.skeleton-card {
+  padding: 1rem;
+}
+
+.skeleton-line {
+  height: 10px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  border-radius: 999px;
+  margin-bottom: 0.75rem;
+  animation: shimmer 1.2s infinite;
+}
+
+.skeleton-line.title {
+  height: 16px;
+  width: 60%;
+}
+
+.skeleton-line.short {
+  width: 40%;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

@@ -1,0 +1,55 @@
+.page-card {
+  padding: 1.5rem;
+}
+
+.page-header {
+  margin-bottom: 1.5rem;
+}
+
+.page-header p {
+  margin: 0.4rem 0 0;
+  color: var(--ink-soft);
+}
+
+.section-block {
+  margin-bottom: 2rem;
+}
+
+.filter-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.attendance-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.attendance-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  background: #ffffff;
+  border-radius: 0.8rem;
+}
+
+.attendance-cell .label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.item-card {
+  padding: 1rem;
+}

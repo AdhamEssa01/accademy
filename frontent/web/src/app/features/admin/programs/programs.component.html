@@ -1,0 +1,32 @@
+<mat-card class="page-card">
+  <div class="page-header">
+    <div>
+      <h2>Programs</h2>
+      <p>Manage program catalogs and high-level tracks.</p>
+    </div>
+    <button mat-raised-button color="primary" (click)="openCreate()">
+      <mat-icon>add</mat-icon>
+      New program
+    </button>
+  </div>
+
+  <app-skeleton-cards *ngIf="isLoading" [count]="4"></app-skeleton-cards>
+
+  <div class="card-grid" *ngIf="!isLoading && programs.length > 0">
+    <mat-card *ngFor="let program of programs" class="item-card">
+      <h3>{{ program.name }}</h3>
+      <p>{{ program.description || 'No description yet.' }}</p>
+      <div class="item-actions">
+        <button mat-button color="primary" (click)="openEdit(program)">Edit</button>
+        <button mat-button color="warn" (click)="delete(program)">Delete</button>
+      </div>
+    </mat-card>
+  </div>
+
+  <div class="empty-state" *ngIf="!isLoading && programs.length === 0">
+    No programs yet. Add the first program.
+  </div>
+
+  <app-pagination [page]="page" [pageSize]="pageSize" [total]="total" (pageChange)="onPageChange($event)">
+  </app-pagination>
+</mat-card>

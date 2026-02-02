@@ -1,0 +1,91 @@
+.shell-container {
+  height: 100vh;
+  background: #f8fafc;
+}
+
+.shell-sidenav {
+  width: 260px;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.shell-sidenav .mat-mdc-list-item .mdc-list-item__primary-text {
+  color: #e2e8f0;
+}
+
+.shell-sidenav .mat-mdc-list-item .mat-mdc-list-item-icon {
+  color: #94a3b8;
+}
+
+.shell-sidenav .mat-mdc-list-item.active .mdc-list-item__primary-text,
+.shell-sidenav .mat-mdc-list-item.active .mat-mdc-list-item-icon {
+  color: #38bdf8;
+}
+
+.sidenav-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 1.25rem;
+}
+
+.brand-mark {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #38bdf8, #22c55e);
+  color: #fff;
+  font-weight: 700;
+}
+
+.brand-name {
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.shell-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+}
+
+.toolbar-title {
+  font-weight: 600;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.shell-content {
+  padding: 2rem;
+}
+
+.mobile-only {
+  display: none;
+}
+
+.profile-text {
+  margin-left: 0.4rem;
+}
+
+@media (max-width: 960px) {
+  .shell-sidenav {
+    width: 220px;
+  }
+
+  .shell-content {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .mobile-only {
+    display: inline-flex;
+  }
+}

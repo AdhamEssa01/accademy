@@ -1,0 +1,27 @@
+<h2 mat-dialog-title>{{ data.session ? 'Edit session' : 'New session' }}</h2>
+<mat-dialog-content [formGroup]="form" class="dialog-form">
+  <mat-form-field appearance="outline">
+    <mat-label>Group ID</mat-label>
+    <input matInput formControlName="groupId" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Instructor User ID</mat-label>
+    <input matInput formControlName="instructorUserId" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Starts at (UTC)</mat-label>
+    <input matInput type="datetime-local" formControlName="startsAtUtc" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Duration (minutes)</mat-label>
+    <input matInput type="number" formControlName="durationMinutes" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Notes</mat-label>
+    <textarea matInput rows="3" formControlName="notes"></textarea>
+  </mat-form-field>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>Cancel</button>
+  <button mat-raised-button color="primary" (click)="save()">Save</button>
+</mat-dialog-actions>

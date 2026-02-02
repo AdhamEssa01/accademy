@@ -1,0 +1,19 @@
+<h2 mat-dialog-title>{{ data.student ? 'Edit student' : 'New student' }}</h2>
+<mat-dialog-content [formGroup]="form" class="dialog-form">
+  <mat-form-field appearance="outline">
+    <mat-label>Full name</mat-label>
+    <input matInput formControlName="fullName" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Date of birth</mat-label>
+    <input matInput type="date" formControlName="dateOfBirth" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Notes</mat-label>
+    <textarea matInput rows="3" formControlName="notes"></textarea>
+  </mat-form-field>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>Cancel</button>
+  <button mat-raised-button color="primary" (click)="save()">Save</button>
+</mat-dialog-actions>

@@ -34,8 +34,8 @@ public sealed class InstructorDashboardService : IInstructorDashboardService
         var endUtc = today.ToDateTime(TimeOnly.MaxValue);
 
         var sessions = await (from session in _dbContext.Sessions.AsNoTracking()
-                              join group in _dbContext.Groups.AsNoTracking()
-                                  on session.GroupId equals group.Id
+                              join grp in _dbContext.Groups.AsNoTracking()
+                                  on session.GroupId equals grp.Id
                               where session.InstructorUserId == userId
                                   && session.StartsAtUtc >= startUtc
                                   && session.StartsAtUtc <= endUtc
@@ -43,8 +43,8 @@ public sealed class InstructorDashboardService : IInstructorDashboardService
                               select new InstructorSessionSummaryDto
                               {
                                   SessionId = session.Id,
-                                  GroupId = group.Id,
-                                  GroupName = group.Name,
+                                  GroupId = grp.Id,
+                                  GroupName = grp.Name,
                                   StartsAtUtc = session.StartsAtUtc,
                                   DurationMinutes = session.DurationMinutes
                               })
@@ -55,11 +55,11 @@ public sealed class InstructorDashboardService : IInstructorDashboardService
                                        on answer.AttemptId equals attempt.Id
                                    join assignment in _dbContext.ExamAssignments.AsNoTracking()
                                        on attempt.AssignmentId equals assignment.Id
-                                   join group in _dbContext.Groups.AsNoTracking()
-                                       on assignment.GroupId equals group.Id
+                                   join grp in _dbContext.Groups.AsNoTracking()
+                                       on assignment.GroupId equals grp.Id
                                    join question in _dbContext.Questions.AsNoTracking()
                                        on answer.QuestionId equals question.Id
-                                   where group.InstructorUserId == userId
+                                   where grp.InstructorUserId == userId
                                        && answer.Score == null
                                        && attempt.Status != ExamAttemptStatus.Graded
                                        && (question.Type == QuestionType.Essay || question.Type == QuestionType.FileUpload)

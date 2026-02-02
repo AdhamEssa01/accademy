@@ -19,6 +19,7 @@ using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
@@ -32,12 +33,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-if (builder.Environment.IsEnvironment("Testing")
-    && string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Default")))
-{
-    builder.Configuration["ConnectionStrings:Default"] = "Data Source=academy_test.db";
-}
-
 if (builder.Environment.IsEnvironment("Testing")
     && string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"]))
 {
@@ -139,6 +134,8 @@ builder.Services.AddSwaggerGen(options =>
             Array.Empty<string>()
         }
     });
+
+    options.OperationFilter<FileUploadOperationFilter>();
 });
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
@@ -241,22 +238,26 @@ if (app.Environment.IsDevelopment())
         }
     });
 
-    if (app.Configuration.GetValue("Seeding:Enabled", true))
+    using var scope = app.Services.CreateScope();
+    var logger = scope.ServiceProvider
+        .GetRequiredService<ILoggerFactory>()
+        .CreateLogger("DbSeeder");
+    try
     {
-        using var scope = app.Services.CreateScope();
-        var logger = scope.ServiceProvider
-            .GetRequiredService<ILoggerFactory>()
-            .CreateLogger("DbSeeder");
-        try
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await dbContext.Database.MigrateAsync(app.Lifetime.ApplicationStopping);
+        logger.LogInformation("Database migrations applied.");
+
+        if (app.Configuration.GetValue("Seeding:Enabled", true))
         {
             await DbSeeder.SeedAsync(scope.ServiceProvider, app.Lifetime.ApplicationStopping);
             logger.LogInformation("Database seeding completed.");
         }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Database seeding failed.");
-            throw;
-        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Database initialization failed.");
+        throw;
     }
 }
 

@@ -1,0 +1,266 @@
+<ng-container *ngIf="cmsSections.length > 0; else staticContent">
+  <section class="landing-shell">
+    <ng-container *ngFor="let section of cmsSections">
+      <ng-container [ngSwitch]="section.type">
+        <ng-container *ngSwitchCase="'hero'">
+          <section class="hero" *ngIf="section.data as data">
+            <div class="hero-copy">
+              <p class="eyebrow">{{ getText(data, 'eyebrow', 'Smart learning management') }}</p>
+              <h1>{{ getText(data, 'headline', 'Shape every learner\'s journey with confidence.') }}</h1>
+              <p class="hero-sub">
+                {{ getText(data, 'subtext', 'A modern academy platform for scheduling, attendance, and parent engagement.') }}
+              </p>
+              <div class="hero-actions">
+                <a mat-raised-button color="primary" [routerLink]="getLink(data, 'primaryCtaLink', '/register')">
+                  {{ getText(data, 'primaryCtaText', 'Get started') }}
+                </a>
+                <a mat-stroked-button [routerLink]="getLink(data, 'secondaryCtaLink', '/login')">
+                  {{ getText(data, 'secondaryCtaText', 'Login') }}
+                </a>
+              </div>
+            </div>
+            <div class="hero-visual">
+              <mat-card class="hero-card">
+                <div class="hero-card-title">{{ getText(data, 'cardTitle', 'Today at a glance') }}</div>
+                <div class="hero-card-stat" *ngFor="let stat of getArray(data, 'stats')">
+                  <span class="stat-number">{{ stat.value }}</span>
+                  <span class="stat-label">{{ stat.label }}</span>
+                </div>
+                <div class="hero-card-footer">{{ getText(data, 'cardFooter', 'Updated just now') }}</div>
+              </mat-card>
+              <div class="hero-pill">{{ getText(data, 'pill', 'Automate attendance + parent updates.') }}</div>
+            </div>
+          </section>
+        </ng-container>
+
+        <ng-container *ngSwitchCase="'stats'">
+          <section class="stats" *ngIf="section.data as data">
+            <mat-card *ngFor="let stat of getArray(data, 'items')">
+              <div class="stat-value">{{ stat.value }}</div>
+              <div class="stat-label">{{ stat.label }}</div>
+            </mat-card>
+          </section>
+        </ng-container>
+
+        <ng-container *ngSwitchCase="'programs'">
+          <section class="section" *ngIf="section.data as data">
+            <div class="section-header">
+              <h2>{{ getText(data, 'title', 'Programs') }}</h2>
+              <p>{{ getText(data, 'subtitle', '') }}</p>
+            </div>
+            <div class="card-grid">
+              <mat-card *ngFor="let item of getArray(data, 'items')">
+                <mat-icon>{{ item.icon || 'menu_book' }}</mat-icon>
+                <h3>{{ item.title }}</h3>
+                <p>{{ item.description }}</p>
+              </mat-card>
+            </div>
+          </section>
+        </ng-container>
+
+        <ng-container *ngSwitchCase="'features'">
+          <section class="section feature-section" *ngIf="section.data as data">
+            <div class="section-header">
+              <h2>{{ getText(data, 'title', 'Why us') }}</h2>
+              <p>{{ getText(data, 'subtitle', '') }}</p>
+            </div>
+            <div class="feature-grid">
+              <mat-card *ngFor="let item of getArray(data, 'items')">
+                <mat-icon>{{ item.icon || 'auto_awesome' }}</mat-icon>
+                <h4>{{ item.title }}</h4>
+                <p>{{ item.description }}</p>
+              </mat-card>
+            </div>
+          </section>
+        </ng-container>
+
+        <ng-container *ngSwitchCase="'testimonials'">
+          <section class="section testimonials" *ngIf="section.data as data">
+            <div class="section-header">
+              <h2>{{ getText(data, 'title', 'Testimonials') }}</h2>
+              <p>{{ getText(data, 'subtitle', '') }}</p>
+            </div>
+            <div class="testimonial-grid">
+              <mat-card *ngFor="let item of getArray(data, 'items')">
+                <p>{{ item.quote }}</p>
+                <span>{{ item.author }}</span>
+              </mat-card>
+            </div>
+          </section>
+        </ng-container>
+
+        <ng-container *ngSwitchDefault></ng-container>
+      </ng-container>
+    </ng-container>
+
+    <section class="section" *ngIf="achievements.length > 0">
+      <div class="section-header">
+        <h2>Achievements spotlight</h2>
+        <p>Celebrate milestones, competitions, and cohort success stories.</p>
+      </div>
+      <div class="filter-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Filter by tag</mat-label>
+          <mat-select [(value)]="selectedAchievementTag">
+            <mat-option *ngFor="let tag of achievementTags" [value]="tag">{{ tag }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+      <div class="achievement-grid">
+        <mat-card *ngFor="let achievement of filteredAchievements">
+          <div class="achievement-title">{{ achievement.title }}</div>
+          <p>{{ achievement.description }}</p>
+        </mat-card>
+      </div>
+    </section>
+  </section>
+</ng-container>
+
+<ng-template #staticContent>
+  <section class="landing-shell">
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">Smart learning management</p>
+      <h1>Shape every learner's journey with confidence.</h1>
+      <p class="hero-sub">
+        A modern academy platform for scheduling, attendance, and parent engagement
+        in one calm, responsive workspace.
+      </p>
+      <div class="hero-actions">
+        <a mat-raised-button color="primary" routerLink="/register">Get started</a>
+        <a mat-stroked-button routerLink="/login">Login</a>
+      </div>
+      <div class="hero-badges">
+        <span><mat-icon>verified</mat-icon> Secure by design</span>
+        <span><mat-icon>schedule</mat-icon> Real-time ops</span>
+        <span><mat-icon>insights</mat-icon> Insightful dashboards</span>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <mat-card class="hero-card">
+        <div class="hero-card-title">Today at a glance</div>
+        <div class="hero-card-stat">
+          <span class="stat-number">124</span>
+          <span class="stat-label">Active students</span>
+        </div>
+        <div class="hero-card-stat">
+          <span class="stat-number">18</span>
+          <span class="stat-label">Upcoming sessions</span>
+        </div>
+        <div class="hero-card-footer">Updated just now</div>
+      </mat-card>
+      <div class="hero-pill">Automate attendance + parent updates.</div>
+    </div>
+  </section>
+
+  <section class="stats">
+    <mat-card>
+      <div class="stat-value">1.2k+</div>
+      <div class="stat-label">Students onboarded</div>
+    </mat-card>
+    <mat-card>
+      <div class="stat-value">98%</div>
+      <div class="stat-label">Session coverage</div>
+    </mat-card>
+    <mat-card>
+      <div class="stat-value">3.5k</div>
+      <div class="stat-label">Attendance records</div>
+    </mat-card>
+    <mat-card>
+      <div class="stat-value">12</div>
+      <div class="stat-label">Programs launched</div>
+    </mat-card>
+  </section>
+
+  <section class="section">
+    <div class="section-header">
+      <h2>Programs built for growing academies</h2>
+      <p>Curated paths for core disciplines with flexible scheduling.</p>
+    </div>
+    <div class="card-grid">
+      <mat-card>
+        <mat-icon>terminal</mat-icon>
+        <h3>Programming</h3>
+        <p>Structured courses and project-based progression.</p>
+      </mat-card>
+      <mat-card>
+        <mat-icon>language</mat-icon>
+        <h3>English</h3>
+        <p>Placement-based levels with speaking milestones.</p>
+      </mat-card>
+      <mat-card>
+        <mat-icon>calculate</mat-icon>
+        <h3>UCMAS</h3>
+        <p>Abacus learning with mastery checkpoints.</p>
+      </mat-card>
+    </div>
+  </section>
+
+  <section class="section feature-section">
+    <div class="section-header">
+      <h2>Why academies choose us</h2>
+      <p>Reduce admin load while keeping parents in the loop.</p>
+    </div>
+    <div class="feature-grid">
+      <mat-card>
+        <mat-icon>auto_awesome</mat-icon>
+        <h4>Unified operations</h4>
+        <p>Manage branches, sessions, and attendance from a single hub.</p>
+      </mat-card>
+      <mat-card>
+        <mat-icon>groups</mat-icon>
+        <h4>Family engagement</h4>
+        <p>Send updates to parents without extra tools or spreadsheets.</p>
+      </mat-card>
+      <mat-card>
+        <mat-icon>shield</mat-icon>
+        <h4>Secure access</h4>
+        <p>Role-based visibility for admins, instructors, and parents.</p>
+      </mat-card>
+      <mat-card>
+        <mat-icon>analytics</mat-icon>
+        <h4>Actionable insights</h4>
+        <p>Monitor performance, attendance, and growth trends instantly.</p>
+      </mat-card>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-header">
+      <h2>Achievements spotlight</h2>
+      <p>Celebrate milestones, competitions, and cohort success stories.</p>
+    </div>
+    <div class="achievement-grid">
+      <mat-card>
+        <div class="achievement-title">Regional Olympiad</div>
+        <p>15 students placed in the top 50 across three disciplines.</p>
+      </mat-card>
+      <mat-card>
+        <div class="achievement-title">Parent satisfaction</div>
+        <p>4.9/5 rating after switching to automated updates.</p>
+      </mat-card>
+      <mat-card>
+        <div class="achievement-title">Attendance lift</div>
+        <p>+22% attendance improvement through proactive reminders.</p>
+      </mat-card>
+    </div>
+  </section>
+
+  <section class="section testimonials">
+    <div class="section-header">
+      <h2>Trusted by growing teams</h2>
+      <p>What educators and parents are saying.</p>
+    </div>
+    <div class="testimonial-grid">
+      <mat-card>
+        <p>We finally have one place to coordinate instructors and parents.</p>
+        <span>Director, Bright Future Academy</span>
+      </mat-card>
+      <mat-card>
+        <p>Attendance is effortless now, and parents love the updates.</p>
+        <span>Operations Lead, Skyline Learning</span>
+      </mat-card>
+    </div>
+  </section>
+</section>
+</ng-template>

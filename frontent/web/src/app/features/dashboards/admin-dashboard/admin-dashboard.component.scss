@@ -1,0 +1,44 @@
+.dashboard {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.dashboard-card {
+  padding: 2rem;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.kpi-card {
+  padding: 1rem;
+}
+
+.kpi-label {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.kpi-value {
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+.list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.list-card {
+  padding: 1rem;
+}
+
+.list-item {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin-bottom: 0.5rem;
+}

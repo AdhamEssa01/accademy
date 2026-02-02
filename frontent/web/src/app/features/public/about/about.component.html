@@ -1,0 +1,16 @@
+<section class="about-shell">
+  <mat-card class="about-card">
+    <h2>{{ title }}</h2>
+    <p>
+      Academy helps modern learning centers operate with clarity. We bring together scheduling,
+      attendance, and parent engagement in one platform.
+    </p>
+  </mat-card>
+
+  <div class="about-grid" *ngIf="sections.length > 0">
+    <mat-card *ngFor="let section of sections">
+      <h3>{{ section.title }}</h3>
+      <p>{{ section.body }}</p>
+    </mat-card>
+  </div>
+</section>

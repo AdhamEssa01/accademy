@@ -1,0 +1,12 @@
+.error-page {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 1rem;
+}
+
+.error-page h1 {
+  font-size: 4rem;
+  margin: 0;
+}

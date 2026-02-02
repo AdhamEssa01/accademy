@@ -1,5 +1,6 @@
 using Academy.Application.Abstractions.Assignments;
 using Academy.Application.Contracts.Assignments;
+using Academy.Api.Models;
 using Academy.Shared.Pagination;
 using Academy.Shared.Security;
 using Asp.Versioning;
@@ -52,10 +53,10 @@ public sealed class AssignmentsController : ControllerBase
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<AssignmentAttachmentDto>> UploadAttachment(
         Guid id,
-        [FromForm] IFormFile file,
+        [FromForm] FileUploadRequest request,
         CancellationToken ct)
     {
-        var attachment = await _attachmentService.UploadAsync(id, file, ct);
+        var attachment = await _attachmentService.UploadAsync(id, request.File, ct);
         return Ok(attachment);
     }
 }

@@ -1,0 +1,18 @@
+<mat-card class="page-card">
+  <h2>My children</h2>
+  <app-skeleton-cards *ngIf="isLoading" [count]="3"></app-skeleton-cards>
+
+  <div class="card-grid" *ngIf="!isLoading && children.length > 0">
+    <mat-card *ngFor="let child of children" class="item-card">
+      <img [src]="child.photoUrl || 'https://placehold.co/120x120?text=Student'" alt="Child" />
+      <div>
+        <h3>{{ child.fullName }}</h3>
+        <p>Student ID: {{ child.id }}</p>
+      </div>
+    </mat-card>
+  </div>
+
+  <div class="empty-state" *ngIf="!isLoading && children.length === 0">
+    No linked children yet.
+  </div>
+</mat-card>

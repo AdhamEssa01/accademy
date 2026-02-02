@@ -1,0 +1,96 @@
+<mat-card class="page-card">
+  <div class="page-header">
+    <div>
+      <h2>Attendance</h2>
+      <p>Submit attendance for a session and run reports.</p>
+    </div>
+  </div>
+
+  <section class="section-block">
+    <h3>Session attendance</h3>
+    <div class="filter-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Session ID</mat-label>
+        <input matInput [(ngModel)]="sessionId" />
+      </mat-form-field>
+      <button mat-raised-button color="primary" (click)="loadSessionAttendance()">Load</button>
+      <button mat-stroked-button (click)="submitAttendance()" [disabled]="isSubmitting">
+        {{ isSubmitting ? 'Submitting...' : 'Submit' }}
+      </button>
+    </div>
+
+    <div class="attendance-list" *ngIf="sessionItems.length > 0">
+      <div class="attendance-row" *ngFor="let item of sessionItems; let i = index">
+        <div class="attendance-cell">
+          <div class="label">Student ID</div>
+          <div>{{ item.studentId }}</div>
+        </div>
+        <div class="attendance-cell">
+          <mat-form-field appearance="outline">
+            <mat-label>Status</mat-label>
+            <mat-select [(ngModel)]="sessionItems[i].status">
+              <mat-option *ngFor="let status of statuses" [value]="status">{{ status }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+        <div class="attendance-cell">
+          <mat-form-field appearance="outline">
+            <mat-label>Reason</mat-label>
+            <input matInput [(ngModel)]="sessionItems[i].reason" />
+          </mat-form-field>
+        </div>
+        <div class="attendance-cell">
+          <mat-form-field appearance="outline">
+            <mat-label>Note</mat-label>
+            <input matInput [(ngModel)]="sessionItems[i].note" />
+          </mat-form-field>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-block">
+    <h3>Attendance reports</h3>
+    <div class="filter-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Group ID</mat-label>
+        <input matInput [(ngModel)]="reportFilters.groupId" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Student ID</mat-label>
+        <input matInput [(ngModel)]="reportFilters.studentId" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Status</mat-label>
+        <mat-select [(ngModel)]="reportFilters.status">
+          <mat-option value="">Any</mat-option>
+          <mat-option *ngFor="let status of statuses" [value]="status">{{ status }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>From</mat-label>
+        <input matInput type="date" [(ngModel)]="reportFilters.from" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>To</mat-label>
+        <input matInput type="date" [(ngModel)]="reportFilters.to" />
+      </mat-form-field>
+      <button mat-raised-button color="primary" (click)="loadReport()">Search</button>
+    </div>
+
+    <div class="card-grid">
+      <mat-card *ngFor="let record of reportItems" class="item-card">
+        <h4>{{ record.status }}</h4>
+        <p>Student: {{ record.studentId }}</p>
+        <p>Session: {{ record.sessionId }}</p>
+      </mat-card>
+    </div>
+
+    <app-pagination
+      [page]="reportPage"
+      [pageSize]="reportPageSize"
+      [total]="reportTotal"
+      (pageChange)="onReportPageChange($event)"
+    ></app-pagination>
+  </section>
+</mat-card>

@@ -1,5 +1,6 @@
 using Academy.Application.Abstractions.Students;
 using Academy.Application.Contracts.Students;
+using Academy.Api.Models;
 using Academy.Shared.Pagination;
 using Academy.Shared.Security;
 using Asp.Versioning;
@@ -74,10 +75,10 @@ public sealed class StudentsController : ControllerBase
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<StudentDto>> UploadPhoto(
         Guid id,
-        [FromForm] IFormFile file,
+        [FromForm] FileUploadRequest request,
         CancellationToken ct)
     {
-        var student = await _studentPhotoService.UploadAsync(id, file, ct);
+        var student = await _studentPhotoService.UploadAsync(id, request.File, ct);
         return Ok(student);
     }
 }

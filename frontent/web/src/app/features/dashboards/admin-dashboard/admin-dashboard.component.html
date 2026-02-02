@@ -1,0 +1,26 @@
+<div class="dashboard">
+  <mat-card class="dashboard-card" *ngIf="isLoading">
+    <h2>Loading dashboard...</h2>
+  </mat-card>
+
+  <div class="kpi-grid" *ngIf="!isLoading && kpis.length > 0">
+    <mat-card *ngFor="let kpi of kpis" class="kpi-card">
+      <div class="kpi-label">{{ kpi.label }}</div>
+      <div class="kpi-value">{{ kpi.value }}</div>
+    </mat-card>
+  </div>
+
+  <mat-card class="dashboard-card" *ngIf="!isLoading && kpis.length === 0">
+    <h2>Admin dashboard</h2>
+    <p>No KPIs available yet.</p>
+  </mat-card>
+
+  <div class="list-grid" *ngIf="lists.length > 0">
+    <mat-card *ngFor="let list of lists" class="list-card">
+      <h3>{{ list.title }}</h3>
+      <div *ngFor="let item of list.items" class="list-item">
+        {{ item | json }}
+      </div>
+    </mat-card>
+  </div>
+</div>

@@ -1,0 +1,44 @@
+<mat-card class="page-card">
+  <div class="page-header">
+    <div>
+      <h2>Courses</h2>
+      <p>Manage courses within each program.</p>
+    </div>
+    <button mat-raised-button color="primary" (click)="openCreate()">
+      <mat-icon>add</mat-icon>
+      New course
+    </button>
+  </div>
+
+  <div class="filter-row">
+    <mat-form-field appearance="outline">
+      <mat-label>Program filter</mat-label>
+      <mat-select [(value)]="selectedProgramId" (selectionChange)="onProgramChange()">
+        <mat-option [value]="null">All programs</mat-option>
+        <mat-option *ngFor="let program of programs" [value]="program.id">
+          {{ program.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <app-skeleton-cards *ngIf="isLoading" [count]="4"></app-skeleton-cards>
+
+  <div class="card-grid" *ngIf="!isLoading && courses.length > 0">
+    <mat-card *ngFor="let course of courses" class="item-card">
+      <h3>{{ course.name }}</h3>
+      <p>{{ course.description || 'No description yet.' }}</p>
+      <div class="item-actions">
+        <button mat-button color="primary" (click)="openEdit(course)">Edit</button>
+        <button mat-button color="warn" (click)="delete(course)">Delete</button>
+      </div>
+    </mat-card>
+  </div>
+
+  <div class="empty-state" *ngIf="!isLoading && courses.length === 0">
+    No courses yet. Add the first course.
+  </div>
+
+  <app-pagination [page]="page" [pageSize]="pageSize" [total]="total" (pageChange)="onPageChange($event)">
+  </app-pagination>
+</mat-card>

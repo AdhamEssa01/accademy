@@ -1,0 +1,36 @@
+<mat-card class="page-card">
+  <h2>Attendance</h2>
+  <div class="filter-row">
+    <mat-form-field appearance="outline">
+      <mat-label>Session ID</mat-label>
+      <input matInput [(ngModel)]="sessionId" />
+    </mat-form-field>
+    <button mat-raised-button color="primary" (click)="load()">Load</button>
+    <button mat-stroked-button (click)="submit()" [disabled]="isSubmitting">
+      {{ isSubmitting ? 'Submitting...' : 'Submit' }}
+    </button>
+  </div>
+
+  <div class="attendance-list" *ngIf="items.length > 0">
+    <div class="attendance-row" *ngFor="let item of items; let i = index">
+      <div class="attendance-cell">
+        <div class="label">Student ID</div>
+        <div>{{ item.studentId }}</div>
+      </div>
+      <div class="attendance-cell">
+        <mat-form-field appearance="outline">
+          <mat-label>Status</mat-label>
+          <mat-select [(ngModel)]="items[i].status">
+            <mat-option *ngFor="let status of statuses" [value]="status">{{ status }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+      <div class="attendance-cell">
+        <mat-form-field appearance="outline">
+          <mat-label>Reason</mat-label>
+          <input matInput [(ngModel)]="items[i].reason" />
+        </mat-form-field>
+      </div>
+    </div>
+  </div>
+</mat-card>

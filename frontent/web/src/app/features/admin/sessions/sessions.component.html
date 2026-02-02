@@ -1,0 +1,46 @@
+<mat-card class="page-card">
+  <div class="page-header">
+    <div>
+      <h2>Sessions</h2>
+      <p>Manage scheduled sessions and instructors.</p>
+    </div>
+    <button mat-raised-button color="primary" (click)="openCreate()">
+      <mat-icon>add</mat-icon>
+      New session
+    </button>
+  </div>
+
+  <div class="filter-row">
+    <mat-form-field appearance="outline">
+      <mat-label>From (UTC)</mat-label>
+      <input matInput type="date" [(ngModel)]="from" (change)="load()" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>To (UTC)</mat-label>
+      <input matInput type="date" [(ngModel)]="to" (change)="load()" />
+    </mat-form-field>
+  </div>
+
+  <app-skeleton-cards *ngIf="isLoading" [count]="4"></app-skeleton-cards>
+
+  <div class="card-grid" *ngIf="!isLoading && sessions.length > 0">
+    <mat-card *ngFor="let session of sessions" class="item-card">
+      <h3>Session</h3>
+      <p>Group: {{ session.groupId }}</p>
+      <p>Instructor: {{ session.instructorUserId }}</p>
+      <p>Starts: {{ session.startsAtUtc }}</p>
+      <p>Duration: {{ session.durationMinutes }} minutes</p>
+      <div class="item-actions">
+        <button mat-button color="primary" (click)="openEdit(session)">Edit</button>
+        <button mat-button color="warn" (click)="delete(session)">Delete</button>
+      </div>
+    </mat-card>
+  </div>
+
+  <div class="empty-state" *ngIf="!isLoading && sessions.length === 0">
+    No sessions yet. Schedule the first session.
+  </div>
+
+  <app-pagination [page]="page" [pageSize]="pageSize" [total]="total" (pageChange)="onPageChange($event)">
+  </app-pagination>
+</mat-card>

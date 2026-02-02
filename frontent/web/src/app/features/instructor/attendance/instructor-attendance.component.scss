@@ -1,0 +1,30 @@
+.page-card {
+  padding: 1.5rem;
+}
+
+.filter-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.attendance-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.attendance-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  background: #ffffff;
+  border-radius: 0.8rem;
+}
+
+.attendance-cell .label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}

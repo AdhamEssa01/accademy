@@ -1,0 +1,32 @@
+<mat-card class="page-card">
+  <div class="page-header">
+    <div>
+      <h2>Branches</h2>
+      <p>Manage academy branches and locations.</p>
+    </div>
+    <button mat-raised-button color="primary" (click)="openCreate()">
+      <mat-icon>add</mat-icon>
+      New branch
+    </button>
+  </div>
+
+  <app-skeleton-cards *ngIf="isLoading" [count]="4"></app-skeleton-cards>
+
+  <div class="branch-grid" *ngIf="!isLoading && branches.length > 0">
+    <mat-card *ngFor="let branch of branches" class="branch-card">
+      <h3>{{ branch.name }}</h3>
+      <p>{{ branch.address || 'No address provided' }}</p>
+      <div class="branch-actions">
+        <button mat-button color="primary" (click)="openEdit(branch)">Edit</button>
+        <button mat-button color="warn" (click)="delete(branch)">Delete</button>
+      </div>
+    </mat-card>
+  </div>
+
+  <div class="empty-state" *ngIf="!isLoading && branches.length === 0">
+    No branches yet. Create the first branch.
+  </div>
+
+  <app-pagination [page]="page" [pageSize]="pageSize" [total]="total" (pageChange)="onPageChange($event)">
+  </app-pagination>
+</mat-card>

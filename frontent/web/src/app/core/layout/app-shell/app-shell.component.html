@@ -1,0 +1,44 @@
+<mat-sidenav-container class="shell-container">
+  <mat-sidenav #drawer class="shell-sidenav" mode="side" [fixedInViewport]="true" [opened]="true">
+    <div class="sidenav-header">
+      <span class="brand-mark">A</span>
+      <span class="brand-name">Academy</span>
+    </div>
+    <mat-divider></mat-divider>
+    <mat-nav-list *ngIf="user$ | async as user">
+      <a
+        mat-list-item
+        *ngFor="let item of getMenuItems(user)"
+        [routerLink]="item.route"
+        routerLinkActive="active"
+      >
+        <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+        <span matListItemTitle>{{ item.label }}</span>
+      </a>
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <mat-toolbar class="shell-toolbar">
+      <button mat-icon-button (click)="drawer.toggle()" class="mobile-only" aria-label="Toggle menu">
+        <mat-icon>menu</mat-icon>
+      </button>
+      <span class="toolbar-title">Dashboard</span>
+      <span class="spacer"></span>
+      <button mat-button [matMenuTriggerFor]="profileMenu" *ngIf="user$ | async as user">
+        <mat-icon>account_circle</mat-icon>
+        <span class="profile-text">{{ user.displayName }}</span>
+      </button>
+      <mat-menu #profileMenu="matMenu">
+        <button mat-menu-item>Settings</button>
+        <button mat-menu-item (click)="logout()">Sign out</button>
+      </mat-menu>
+    </mat-toolbar>
+
+    <app-session-banner></app-session-banner>
+
+    <div class="shell-content">
+      <router-outlet></router-outlet>
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>

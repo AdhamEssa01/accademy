@@ -1,0 +1,19 @@
+<mat-card class="page-card">
+  <h2>Announcements</h2>
+  <app-skeleton-cards *ngIf="isLoading" [count]="3"></app-skeleton-cards>
+
+  <div class="card-grid" *ngIf="!isLoading && announcements.length > 0">
+    <mat-card *ngFor="let announcement of announcements" class="item-card">
+      <h3>{{ announcement.title }}</h3>
+      <p>{{ announcement.body || 'Details coming soon.' }}</p>
+      <span class="meta">{{ announcement.publishedAtUtc || '' }}</span>
+    </mat-card>
+  </div>
+
+  <div class="empty-state" *ngIf="!isLoading && announcements.length === 0">
+    No announcements yet.
+  </div>
+
+  <app-pagination [page]="page" [pageSize]="pageSize" [total]="total" (pageChange)="onPageChange($event)">
+  </app-pagination>
+</mat-card>

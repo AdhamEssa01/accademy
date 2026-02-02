@@ -1,0 +1,18 @@
+<mat-card class="page-card">
+  <div class="page-header">
+    <div>
+      <h2>Academy settings</h2>
+      <p>Manage your academy name and primary details.</p>
+    </div>
+    <button mat-raised-button color="primary" (click)="save()" [disabled]="isSaving">
+      {{ isSaving ? 'Saving...' : 'Save changes' }}
+    </button>
+  </div>
+
+  <form class="form-grid" [formGroup]="form">
+    <mat-form-field appearance="outline">
+      <mat-label>Academy name</mat-label>
+      <input matInput formControlName="name" />
+    </mat-form-field>
+  </form>
+</mat-card>

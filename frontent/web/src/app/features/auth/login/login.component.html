@@ -1,0 +1,31 @@
+<div class="auth-shell">
+  <mat-card>
+    <mat-card-title>Welcome back</mat-card-title>
+    <mat-card-subtitle>Sign in to your academy</mat-card-subtitle>
+    <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()">
+      <mat-form-field appearance="outline">
+        <mat-label>Email</mat-label>
+        <input matInput type="email" placeholder="you@academy.com" formControlName="email" />
+        <mat-error *ngIf="form.controls.email.touched && form.controls.email.invalid">
+          Enter a valid email.
+        </mat-error>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Password</mat-label>
+        <input matInput type="password" placeholder="••••••••" formControlName="password" />
+        <mat-error *ngIf="form.controls.password.touched && form.controls.password.invalid">
+          Password is required.
+        </mat-error>
+      </mat-form-field>
+      <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+      <button mat-raised-button color="primary" type="submit" [disabled]="isSubmitting">
+        {{ isSubmitting ? 'Signing in...' : 'Login' }}
+      </button>
+      <button mat-stroked-button type="button" disabled>Continue with Google</button>
+    </form>
+    <div class="auth-footer">
+      <span>New here?</span>
+      <a routerLink="/register">Create an account</a>
+    </div>
+  </mat-card>
+</div>

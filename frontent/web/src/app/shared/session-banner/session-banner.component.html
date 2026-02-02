@@ -1,0 +1,4 @@
+<div class="session-banner" *ngIf="sessionExpiring$ | async">
+  <span>Your session will expire soon.</span>
+  <button mat-stroked-button color="primary" (click)="refreshSession()">Extend session</button>
+</div>

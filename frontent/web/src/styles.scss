@@ -1,0 +1,63 @@
+@use '@angular/material' as mat;
+
+$primary: mat.m2-define-palette(mat.$m2-teal-palette, 600);
+$accent: mat.m2-define-palette(mat.$m2-amber-palette, 500);
+$warn: mat.m2-define-palette(mat.$m2-red-palette);
+
+$typography: mat.m2-define-typography-config(
+  $font-family: 'Sora, "Segoe UI", sans-serif',
+  $headline-1: mat.m2-define-typography-level(3.2rem, 1.1, 600),
+  $headline-2: mat.m2-define-typography-level(2.6rem, 1.15, 600),
+  $headline-3: mat.m2-define-typography-level(2.1rem, 1.2, 600),
+  $headline-4: mat.m2-define-typography-level(1.7rem, 1.3, 600),
+  $subtitle-1: mat.m2-define-typography-level(1.1rem, 1.4, 500),
+  $body-1: mat.m2-define-typography-level(1rem, 1.6, 400),
+  $body-2: mat.m2-define-typography-level(0.95rem, 1.6, 400)
+);
+
+$theme: mat.m2-define-light-theme((
+  color: (
+    primary: $primary,
+    accent: $accent,
+    warn: $warn,
+  ),
+  typography: $typography,
+  density: 0,
+));
+
+@include mat.core();
+@include mat.all-component-themes($theme);
+
+:root {
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --ink: #0f172a;
+  --ink-soft: #475569;
+  --accent: #0ea5e9;
+  --accent-strong: #0f766e;
+  --radius: 1.1rem;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Sora', 'Segoe UI', sans-serif;
+  color: var(--ink);
+  background: var(--surface-muted);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}

@@ -1,0 +1,46 @@
+.page-card {
+  padding: 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.page-header p {
+  margin: 0.4rem 0 0;
+  color: var(--ink-soft);
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.profile-photo {
+  width: 100%;
+  max-width: 240px;
+  border-radius: 1rem;
+  object-fit: cover;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.upload-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: #0f766e;
+  color: #fff;
+  border-radius: 0.6rem;
+  cursor: pointer;
+}
+
+.upload-button input {
+  display: none;
+}
